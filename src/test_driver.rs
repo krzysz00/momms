@@ -26,14 +26,14 @@ extern{
                c: *mut c_double, ldc: *const int64_t );
 }
 
-fn blas_dgemm( a: &mut Matrix<f64>, b: &mut Matrix<f64>, c: &mut Matrix<f64> ) 
+fn blas_dgemm( a: &mut Matrix<f64>, b: &mut Matrix<f64>, c: &mut Matrix<f64> )
 {
-    unsafe{ 
+    unsafe{
         let transa = CString::new("N").unwrap();
         let transb = CString::new("N").unwrap();
-        let ap = a.get_mut_buffer();
+        let ap = a.get_buffer();
         let bp = b.get_buffer();
-        let cp = c.get_buffer();
+        let cp = c.get_mut_buffer();
 
         let lda = a.get_column_stride() as int64_t;
         let ldb = b.get_column_stride() as int64_t;
@@ -45,10 +45,10 @@ fn blas_dgemm( a: &mut Matrix<f64>, b: &mut Matrix<f64>, c: &mut Matrix<f64> )
 
         let alpha: f64 = 1.0;
         let beta: f64 = 1.0;
-    
+
         dgemm_( transa.as_ptr() as *const c_char, transb.as_ptr() as *const c_char,
                 &m, &n, &k,
-                &alpha as *const c_double, 
+                &alpha as *const c_double,
                 ap as *const c_double, &lda,
                 bp as *const c_double, &ldb,
                 &beta as *const c_double,
@@ -72,7 +72,7 @@ fn test_c_eq_a_b<T:Scalar, At:Mat<T>, Bt:Mat<T>, Ct:Mat<T>>( a: &mut At, b: &mut
     bw.fill_zero();
     abw.fill_zero();
 
-    //Do bw = Bw, then abw = A*(Bw)   
+    //Do bw = Bw, then abw = A*(Bw)
     unsafe {
         ref_gemm.run( b, &mut w, &mut bw, &ThreadInfo::single_thread() );
         ref_gemm.run( a, &mut bw, &mut abw, &ThreadInfo::single_thread() );
@@ -82,7 +82,7 @@ fn test_c_eq_a_b<T:Scalar, At:Mat<T>, Bt:Mat<T>, Ct:Mat<T>>( a: &mut At, b: &mut
     unsafe {
         ref_gemm.run( c, &mut w, &mut cw, &ThreadInfo::single_thread() );
     }
-    
+
     //Cw -= abw
     cw.axpy( T::zero() - T::one(), &abw );
     cw.frosqr()
@@ -115,188 +115,81 @@ fn pin_to_core(core: usize) {
     let _ = topo.set_cpubind_for_thread(tid, bind_to, CPUBIND_THREAD);
 }
 
+fn flush_cache(arr: &mut Vec<f64> ) {
+    for i in (arr).iter_mut() {
+        *i += 1.0;
+    }
+}
 
-fn compare_gotos() {
-    type KC = typenum::U256; 
-    type MC = typenum::U72; 
+fn test_gemm() {
+    use typenum::{UInt, B0};
+    type NC = UInt<UInt<typenum::U1020, B0>, B0>;
+    type KC = typenum::U256;
+    type MC = typenum::U72;
     type NR = typenum::U8;
     type MR = typenum::U6;
-    type HierA<T> = Hierarch<T, MR, KC, U1, MR>;
-    type HierB<T> = Hierarch<T, KC, NR, NR, U1>;
-    type HierC<T> = Hierarch<T, MR, NR, NR, U1>;
 
-    type GotoH<T:Scalar,MTA:Mat<T>,MTB:Mat<T>,MTC:Mat<T>> 
-        = PartK<T, MTA, MTB, MTC, KC,
-          PartM<T, MTA, MTB, MTC, MC,
-          KernelNM<T, MTA, MTB, MTC, NR, MR>>>;
-
-    type Goto<T:Scalar,MTA:Mat<T>,MTB:Mat<T>,MTC:Mat<T>> 
-        = PartK<T, MTA, MTB, MTC, KC,
+    type Goto<T: Scalar, MTA: Mat<T>, MTB: Mat<T>, MTC: Mat<T>>
+        = PartN<T, MTA, MTB, MTC, NC,
+          PartK<T, MTA, MTB, MTC, KC,
           PackB<T, MTA, MTB, MTC, ColumnPanelMatrix<T,NR>,
           PartM<T, MTA, ColumnPanelMatrix<T,NR>, MTC, MC,
           PackA<T, MTA, ColumnPanelMatrix<T,NR>, MTC, RowPanelMatrix<T,MR>,
-          KernelNM<T, RowPanelMatrix<T,MR>, ColumnPanelMatrix<T,NR>, MTC, NR, MR>>>>>;
+          KernelNM<T, RowPanelMatrix<T,MR>, ColumnPanelMatrix<T,NR>, MTC, NR, MR>>>>>>;
 
-    type GotoOrig  = Goto<f64, Matrix<f64>, Matrix<f64>, Matrix<f64>>;
-    type GotoHierC = Goto<f64, Matrix<f64>, Matrix<f64>, HierC<f64>>;
-    type GotoHier = GotoH<f64, HierA<f64>, HierB<f64>, HierC<f64>>;
+    type GotoPlain = Goto<f64, Matrix<f64>, Matrix<f64>, Matrix<f64>>;
 
-    let mut goto : GotoOrig = GotoOrig::new();
-    let mut goto_hier_c : GotoHierC = GotoHierC::new();
-    let mut goto_hier : GotoHier = GotoHier::new();
-    let algo_desc = GotoHier::hierarchy_description();
-    
-    pin_to_core(0);
+    let mut goto: GotoPlain = GotoPlain::new();
 
-    for index in 1..128 {
-        let mut best_time: f64 = 9999999999.0;
-        let mut best_time_blis: f64 = 9999999999.0;
-        let mut best_time_2: f64 = 9999999999.0;
-        let mut best_time_3: f64 = 9999999999.0;
-        let mut worst_err: f64 = 0.0;
-        let mut worst_err_2: f64 = 0.0;
-        let mut worst_err_3: f64 = 0.0;
-        let size = index*8;
-        let (m, n, k) = (size, size, size);
-
-
-        let n_reps = 5;
-        for _ in 0..n_reps {
-            let mut a : HierA<f64> = Hierarch::new(m, k, &algo_desc, AlgorithmStep::M{bsz: 0}, AlgorithmStep::K{bsz: 0});
-            let mut b : HierB<f64> = Hierarch::new(k, n, &algo_desc, AlgorithmStep::K{bsz: 0}, AlgorithmStep::N{bsz: 0});
-            let mut c : HierC<f64> = Hierarch::new(m, n, &algo_desc, AlgorithmStep::M{bsz: 0}, AlgorithmStep::N{bsz: 0});
-            a.fill_rand(); b.fill_rand(); c.fill_zero();
-
-            let mut a2 : Matrix<f64> = Matrix::new(m, k);
-            let mut b2 : Matrix<f64> = Matrix::new(k, n);
-            let mut c2 : Matrix<f64> = Matrix::new(m, n);
-            a2.fill_rand(); b2.fill_rand(); c2.fill_zero();
-
-            c2.transpose();
-            let mut start = Instant::now();
-            unsafe{
-                goto.run( &mut a2, &mut b2, &mut c2, &ThreadInfo::single_thread() );
-            }
-            best_time = best_time.min(dur_seconds(start));
-            let err = test_c_eq_a_b( &mut a2, &mut b2, &mut c2);
-            worst_err = worst_err.max(err);
-            c2.transpose();
-
-            start = Instant::now();
-            unsafe{
-                goto_hier_c.run( &mut a2, &mut b2, &mut c, &ThreadInfo::single_thread() );
-            }
-            best_time_2 = best_time_2.min(dur_seconds(start));
-            let err = test_c_eq_a_b( &mut a2, &mut b2, &mut c);
-            worst_err_2 = worst_err_2.max(err);
-            
-            c.fill_zero();           
-            start = Instant::now();
-            unsafe{
-                goto_hier.run( &mut a, &mut b, &mut c, &ThreadInfo::single_thread() );
-            }
-            best_time_3 = best_time_3.min(dur_seconds(start));
-            let err = test_c_eq_a_b( &mut a, &mut b, &mut c);
-            worst_err_3 = worst_err_3.max(err);
-            
-
-            start = Instant::now();
-            blas_dgemm( &mut a2, &mut b2, &mut c2);
-            best_time_blis = best_time_blis.min(dur_seconds(start));
-        }
-        println!("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}", 
-                 m, n, k,
-                 gflops(m,n,k,best_time), 
-                 gflops(m,n,k,best_time_2), 
-                 gflops(m,n,k,best_time_3), 
-                 gflops(m,n,k,best_time_blis),
-                 format!("{:e}", worst_err.sqrt()),
-                 format!("{:e}", worst_err_2.sqrt()),
-                 format!("{:e}", worst_err_3.sqrt()));
-
+    let flusher_len = 32*1024*1024; //256MB
+    let mut flusher: Vec<f64> = Vec::with_capacity(flusher_len);
+    for _ in 0..flusher_len {
+        flusher.push(0.0);
     }
-}
 
-fn test_gemv_kernel() {
-    type KC = typenum::U64; 
-    type MC = typenum::U56;
-    type NC = typenum::U1024;
-
-    type HierA<T> = Hierarch<T, MC, KC, U1, MC>;
-    type HierB<T> = Hierarch<T, KC, NC, U1, KC>;
-    type HierC<T> = Hierarch<T, MC, NC, U1, MC>;
-
-    type Algorithm<T:Scalar,MTA:Mat<T>,MTB:Mat<T>,MTC:Mat<T>> 
-        = PartK<T, MTA, MTB, MTC, typenum::U128,
-          PartN<T, MTA, MTB, MTC, typenum::U192, 
-          PartK<T, MTA, MTB, MTC, KC,
-          PartM<T, MTA, MTB, MTC, MC,
-          GemvAL1<T, MTA, MTB, MTC, MC, KC>>>>>;
-
-    type Algo = Algorithm<f64, HierA<f64>, HierB<f64>, HierC<f64>>;
-
-    let mut algo : Algo = Algo::new();
-    let algo_desc = Algo::hierarchy_description();
-    
-    pin_to_core(0);
-
-    for index in 1..128 {
+    //pin_to_core(0);
+    for index in 1..64 {
         let mut best_time: f64 = 9999999999.0;
         let mut best_time_blis: f64 = 9999999999.0;
         let mut worst_err: f64 = 0.0;
-        let size = index*8;
+        let size = index * 16;
         let (m, n, k) = (size, size, size);
 
         let n_reps = 5;
         for _ in 0..n_reps {
-            let mut a : HierA<f64> = Hierarch::new(m, k, &algo_desc, AlgorithmStep::M{bsz: 0}, AlgorithmStep::K{bsz: 0});
-            let mut b : HierB<f64> = Hierarch::new(k, n, &algo_desc, AlgorithmStep::K{bsz: 0}, AlgorithmStep::N{bsz: 0});
-            let mut c : HierC<f64> = Hierarch::new(m, n, &algo_desc, AlgorithmStep::M{bsz: 0}, AlgorithmStep::N{bsz: 0});
+            let mut a : Matrix<f64> = Matrix::new(m, k);
+            let mut b : Matrix<f64> = Matrix::new(k, n);
+            let mut c : Matrix<f64> = Matrix::new(m, n);
             a.fill_rand(); b.fill_rand(); c.fill_zero();
 
-            let mut a2 : Matrix<f64> = Matrix::new(m, k);
-            let mut b2 : Matrix<f64> = Matrix::new(k, n);
-            let mut c2 : Matrix<f64> = Matrix::new(m, n);
-            a2.fill_rand(); b2.fill_rand(); c2.fill_zero();
+            c.transpose();
+            flush_cache(&mut flusher);
 
             let mut start = Instant::now();
-            unsafe{
-                algo.run( &mut a, &mut b, &mut c, &ThreadInfo::single_thread() );
+            unsafe {
+                goto.run(&mut a, &mut b, &mut c, &ThreadInfo::single_thread() );
             }
             best_time = best_time.min(dur_seconds(start));
             let err = test_c_eq_a_b( &mut a, &mut b, &mut c);
             worst_err = worst_err.max(err);
 
-/*
-            print!("A = ");
-            a.print_matlab();
-            println!(";");
-            println!("");
-            print!("B = ");
-            b.print_matlab();
-            println!(";");
-            println!("");
-            print!("C = ");
-            c.print_matlab();
-            println!(";");
-            println!("");
-            
-            println!("");
-            c.print();
-*/
+            c.transpose();
+            flush_cache(&mut flusher);
+
             start = Instant::now();
-            blas_dgemm( &mut a2, &mut b2, &mut c2);
+            blas_dgemm( &mut a, &mut b, &mut c);
             best_time_blis = best_time_blis.min(dur_seconds(start));
         }
-        println!("{}\t{}\t{}\t{}\t{}\t{}", 
+        println!("{}\t{}\t{}\t{}\t{}\t{}",
                  m, n, k,
-                 gflops(m,n,k,best_time), 
+                 gflops(m,n,k,best_time),
                  gflops(m,n,k,best_time_blis),
                  format!("{:e}", worst_err.sqrt()));
     }
-}
 
+    let sum: f64 = flusher.iter().sum();
+    println!("Flush value {}", sum);
+}
 fn main() {
-    test_gemv_kernel();
-//    time_sweep_goto( );
+    test_gemm();
 }

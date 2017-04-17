@@ -469,7 +469,7 @@ impl<T: Scalar, LH: Unsigned, LW: Unsigned, LRS: Unsigned, LCS: Unsigned> Resiza
         }
     }
     #[inline(always)]
-    fn resize_to( &mut self, other: &Mat<T> ) {
+    fn resize_to( &mut self, _other: &Mat<T> ) {
         panic!("resize_to is not implemented for hierarchies yet!");
     }
 }

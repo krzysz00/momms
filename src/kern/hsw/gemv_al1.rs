@@ -1,49 +1,57 @@
 use matrix::{Scalar,Mat,Hierarch};
 use core::marker::{PhantomData};
-use composables::{GemmNode,AlgorithmStep};
+use composables::{Gemm3Node,AlgorithmStep};
 use thread_comm::{ThreadInfo};
 use typenum::{Unsigned, U1};
 
-pub struct GemvAL1<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Mc: Unsigned, Kc: Unsigned>{
+pub struct GemvAL1<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>,
+                   Mc: Unsigned, Kc: Unsigned>{
     _at: PhantomData<At>,
     _bt: PhantomData<Bt>,
     _ct: PhantomData<Ct>,
+    _xt: PhantomData<Xt>,
     _t: PhantomData<T>,
     _mct: PhantomData<Mc>,
     _kct: PhantomData<Kc>,
 }
-impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Mc: Unsigned, Kc: Unsigned> 
-    GemmNode<T, At, Bt, Ct> for 
-    GemvAL1<T, At, Bt, Ct, Mc, Kc> {
+impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>,
+     Mc: Unsigned, Kc: Unsigned>
+    Gemm3Node<T, At, Bt, Ct, Xt> for
+    GemvAL1<T, At, Bt, Ct, Xt, Mc, Kc> {
     #[inline(always)]
-    default unsafe fn run( &mut self, _a: &mut At, _b: &mut Bt, _c: &mut Ct, _thr: &ThreadInfo<T> ) -> () {
+        default unsafe fn run(&mut self, _a: &mut At, _b: &mut Bt, _c: &mut Ct, _x: &mut Xt,
+                              _thr: &ThreadInfo<T> ) -> () {
         panic!("Macrokernel general case not implemented!");
     }
-    fn new( ) -> GemvAL1<T, At, Bt, Ct, Mc, Kc> { 
-        GemvAL1{ _at: PhantomData, _bt: PhantomData, _ct: PhantomData, _t: PhantomData, _mct: PhantomData, _kct: PhantomData } 
+    fn new( ) -> GemvAL1<T, At, Bt, Ct, Xt, Mc, Kc> {
+        GemvAL1 {_at: PhantomData, _bt: PhantomData, _ct: PhantomData,
+                 _xt: PhantomData, _t: PhantomData,
+                 _mct: PhantomData, _kct: PhantomData }
     }
     fn hierarchy_description( ) -> Vec<AlgorithmStep> {
         let mut desc = Vec::new();
         desc.push(AlgorithmStep::N{bsz: U1::to_usize()});
         desc
-    }  
+    }
 }
 
 type T = f64;
 use typenum::{U60};
-impl<Kc: Unsigned, N: Unsigned>
-     GemmNode<T, Hierarch<T, U60, Kc, U1, U60>,
-                 Hierarch<T, Kc, N,  U1, Kc>,
-                 Hierarch<T, U60, N,  U1, U60>> for
+impl<Xt: Mat<T>, Kc: Unsigned, N: Unsigned>
+     Gemm3Node<T, Hierarch<T, U60, Kc, U1, U60>,
+               Hierarch<T, Kc, N,  U1, Kc>,
+               Hierarch<T, U60, N,  U1, U60>, Xt> for
      GemvAL1<T, Hierarch<T, U60, Kc, U1, U60>,
                 Hierarch<T, Kc, N,  U1, Kc>,
-                Hierarch<T, U60, N,  U1, U60>, U60, Kc>
+                Hierarch<T, U60, N,  U1, U60>, Xt, U60, Kc>
 {
     #[inline(always)]
-    unsafe fn run(&mut self, 
-        a: &mut Hierarch<T, U60, Kc, U1, U60>,
-        b: &mut Hierarch<T, Kc, N,  U1, Kc>, 
-        c: &mut Hierarch<T, U60, N,  U1, U60>, _thr: &ThreadInfo<T>)
+    unsafe fn run(&mut self,
+                  a: &mut Hierarch<T, U60, Kc, U1, U60>,
+                  b: &mut Hierarch<T, Kc, N,  U1, Kc>,
+                  c: &mut Hierarch<T, U60, N,  U1, U60>,
+                  _x: &mut Xt,
+                  _thr: &ThreadInfo<T>)
     {
         let ap = a.get_mut_buffer();
         let bp = b.get_mut_buffer();
@@ -148,19 +156,22 @@ impl<Kc: Unsigned, N: Unsigned>
 
 
 use typenum::{U56};
-impl<Kc: Unsigned, N: Unsigned>
-     GemmNode<T, Hierarch<T, U56, Kc, U1, U56>,
-                 Hierarch<T, Kc, N,  U1, Kc>,
-                 Hierarch<T, U56, N,  U1, U56>> for
+impl<Xt: Mat<T>, Kc: Unsigned, N: Unsigned>
+     Gemm3Node<T, Hierarch<T, U56, Kc, U1, U56>,
+               Hierarch<T, Kc, N,  U1, Kc>,
+               Hierarch<T, U56, N,  U1, U56>,
+               Xt> for
      GemvAL1<T, Hierarch<T, U56, Kc, U1, U56>,
                 Hierarch<T, Kc, N,  U1, Kc>,
-                Hierarch<T, U56, N,  U1, U56>, U56, Kc>
+                Hierarch<T, U56, N,  U1, U56>, Xt, U56, Kc>
 {
     #[inline(always)]
-    unsafe fn run(&mut self, 
-        a: &mut Hierarch<T, U56, Kc, U1, U56>,
-        b: &mut Hierarch<T, Kc, N,  U1, Kc>, 
-        c: &mut Hierarch<T, U56, N,  U1, U56>, _thr: &ThreadInfo<T>)
+    unsafe fn run(&mut self,
+                  a: &mut Hierarch<T, U56, Kc, U1, U56>,
+                  b: &mut Hierarch<T, Kc, N,  U1, Kc>,
+                  c: &mut Hierarch<T, U56, N,  U1, U56>,
+                  _x: &mut Xt,
+                  _thr: &ThreadInfo<T>)
     {
         let ap = a.get_mut_buffer();
         let bp = b.get_mut_buffer();

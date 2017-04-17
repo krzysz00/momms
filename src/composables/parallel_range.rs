@@ -1,11 +1,11 @@
 use core::marker::{PhantomData};
 use matrix::{Scalar,Mat};
 use thread_comm::ThreadInfo;
-use composables::{GemmNode,AlgorithmStep};
+use composables::{Gemm3Node,AlgorithmStep};
 use typenum::Unsigned;
 
 //Some helper types so we can specify how the parallelizers decide how many threads to use
-pub trait Nwayer{
+pub trait Nwayer {
     fn get_n_way( usize ) -> usize;
 }
 pub struct Target<Nthr: Unsigned> { _nthr: PhantomData<Nthr> }
@@ -28,8 +28,8 @@ struct ParallelInfo<T: Scalar> {
     work_id: usize,
 }
 
-pub struct ParallelM<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, 
-    Iota: Unsigned, Nthr: Nwayer, S: GemmNode<T, At, Bt, Ct>> {
+pub struct ParallelM<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>,
+    Iota: Unsigned, Nthr: Nwayer, S: Gemm3Node<T, At, Bt, Ct, Xt>> {
     //Initialized Stuff
     child: S,
 
@@ -40,11 +40,13 @@ pub struct ParallelM<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>,
     _at: PhantomData<At>,
     _bt: PhantomData<Bt>,
     _ct: PhantomData<Ct>,
+    _xt: PhantomData<Xt>,
     _iotat: PhantomData<Iota>,
     _nthr: PhantomData<Nthr>,
 }
-impl<T: Scalar,At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, 
-    Iota: Unsigned, Nthr: Nwayer, S: GemmNode<T, At, Bt, Ct>> ParallelM<T,At,Bt,Ct,Iota,Nthr,S> {
+impl<T: Scalar,At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>,
+     Iota: Unsigned, Nthr: Nwayer, S: Gemm3Node<T, At, Bt, Ct, Xt>>
+    ParallelM<T, At, Bt, Ct, Xt, Iota, Nthr, S> {
     #[inline(always)]
     fn make_subinfo(&mut self, info: &ThreadInfo<T>) -> ParallelInfo<T>{
         //First figure out how many ways to split into
@@ -53,24 +55,26 @@ impl<T: Scalar,At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>,
 
         //Figure out new thread IDs
         let subinfo = info.split(n_way);
-        ParallelInfo{ thr: subinfo, n_way: n_way, 
+        ParallelInfo{ thr: subinfo, n_way: n_way,
             work_id: info.thread_id() / subcomm_n_threads }
     }
 }
-impl<T: Scalar,At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, 
-    Iota: Unsigned, Nthr: Nwayer, S: GemmNode<T, At, Bt, Ct>> GemmNode<T, At, Bt, Ct> for ParallelM<T,At,Bt,Ct,Iota,Nthr,S> {
+impl<T: Scalar,At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>,
+     Iota: Unsigned, Nthr: Nwayer, S: Gemm3Node<T, At, Bt, Ct, Xt>>
+    Gemm3Node<T, At, Bt, Ct, Xt> for ParallelM<T, At, Bt, Ct, Xt, Iota, Nthr, S> {
     #[inline(always)]
-    unsafe fn run(&mut self, a: &mut At, b: &mut Bt, c:&mut Ct, thr: &ThreadInfo<T>) -> () {
+        unsafe fn run(&mut self, a: &mut At, b: &mut Bt, c: &mut Ct, x: &mut Xt,
+                      thr: &ThreadInfo<T>) -> () {
         //Split the thread communicator and create new thread infos
         let parallel_info = match self.par_inf {
             Some(ref x) => { x },
             None => { let new_par_inf = self.make_subinfo( thr );
                       self.par_inf = Option::Some( new_par_inf );
                       self.par_inf.as_ref().unwrap()
-            }, 
+            },
         };
 
-        
+
         //Now figure out the range of this thread
         let range = a.iter_height();                     // Global range
         let n_iotas = (range-1) / Iota::to_usize() + 1;         // Number of MR micro-panels
@@ -92,7 +96,7 @@ impl<T: Scalar,At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>,
         c.add_off_y(start);
 
         //Run subproblem
-        self.child.run(a, b, c, &parallel_info.thr);
+        self.child.run(a, b, c, x, &parallel_info.thr);
 
         //Unpartition matrices
         a.set_logical_h_padding(h_padding_save);
@@ -102,18 +106,20 @@ impl<T: Scalar,At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>,
         c.set_iter_height(h_iter_save);
         c.set_off_y(cy_off_save);
     }
-    fn new() -> ParallelM<T, At, Bt, Ct, Iota, Nthr, S>{
-        ParallelM{ child: S::new(), par_inf: Option::None,
-            _t: PhantomData, _at: PhantomData, _bt: PhantomData, _ct: PhantomData,
-            _iotat: PhantomData, _nthr: PhantomData }
+    fn new() -> ParallelM<T, At, Bt, Ct, Xt, Iota, Nthr, S>{
+        ParallelM {child: S::new(), par_inf: Option::None,
+                   _t: PhantomData, _at: PhantomData, _bt:
+                   PhantomData, _ct: PhantomData,
+                   _xt: PhantomData,
+                   _iotat: PhantomData, _nthr: PhantomData }
     }
     fn hierarchy_description( ) -> Vec<AlgorithmStep> {
         S::hierarchy_description()
     } 
 }
 
-pub struct ParallelN<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, 
-    Iota: Unsigned, Nthr: Nwayer, S: GemmNode<T, At, Bt, Ct>> {
+pub struct ParallelN<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>,
+    Iota: Unsigned, Nthr: Nwayer, S: Gemm3Node<T, At, Bt, Ct, Xt>> {
     //Initialized Stuff
     child: S,
 
@@ -124,11 +130,13 @@ pub struct ParallelN<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>,
     _at: PhantomData<At>,
     _bt: PhantomData<Bt>,
     _ct: PhantomData<Ct>,
+    _xt: PhantomData<Xt>,
     _iotat: PhantomData<Iota>,
     _nthr: PhantomData<Nthr>,
 }
-impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Iota: Unsigned, Nthr: Nwayer, S: GemmNode<T, At, Bt, Ct>> 
-    ParallelN<T,At,Bt,Ct,Iota,Nthr,S> {
+impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>,
+     Iota: Unsigned, Nthr: Nwayer, S: Gemm3Node<T, At, Bt, Ct, Xt>>
+    ParallelN<T, At, Bt, Ct, Xt, Iota, Nthr, S> {
     #[inline(always)]
     fn make_subinfo(&mut self, info: &ThreadInfo<T>) -> ParallelInfo<T>{
         //First figure out how many ways to split into
@@ -137,21 +145,23 @@ impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Iota: Unsigned, Nthr: Nwayer
 
         //Figure out new thread IDs
         let subinfo = info.split(n_way);
-        ParallelInfo{ thr: subinfo, n_way: n_way, 
+        ParallelInfo{ thr: subinfo, n_way: n_way,
             work_id: info.thread_id() / subcomm_n_threads }
     }
 }
-impl<T: Scalar,At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, 
-    Iota: Unsigned, Nthr: Nwayer, S: GemmNode<T, At, Bt, Ct>> GemmNode<T, At, Bt, Ct> for ParallelN<T,At,Bt,Ct,Iota,Nthr,S> {
+impl<T: Scalar,At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>,
+     Iota: Unsigned, Nthr: Nwayer, S: Gemm3Node<T, At, Bt, Ct, Xt>>
+    Gemm3Node<T, At, Bt, Ct, Xt> for ParallelN<T, At, Bt, Ct, Xt, Iota, Nthr, S> {
     #[inline(always)]
-    unsafe fn run(&mut self, a: &mut At, b: &mut Bt, c:&mut Ct, thr: &ThreadInfo<T>) -> () {
+        unsafe fn run(&mut self, a: &mut At, b: &mut Bt, c: &mut Ct, x: &mut Xt,
+                      thr: &ThreadInfo<T>) -> () {
         //Split the thread communicator and create new thread infos
         let parallel_info = match self.par_inf {
             Some(ref x) => { x },
             None => { let new_par_inf = self.make_subinfo( thr );
                       self.par_inf = Option::Some( new_par_inf );
                       self.par_inf.as_ref().unwrap()
-            }, 
+            },
         };
 
         //Now figure out the range of this thread
@@ -176,7 +186,7 @@ impl<T: Scalar,At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>,
         c.add_off_x(start);
 
         //Run subproblem
-        self.child.run(a, b, c, &parallel_info.thr);
+        self.child.run(a, b, c, x, &parallel_info.thr);
 
         //Unpartition matrices
         b.set_logical_w_padding(w_padding_save);
@@ -186,10 +196,11 @@ impl<T: Scalar,At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>,
         c.set_iter_width(w_iter_save);
         c.set_off_x(cx_off_save);
     }
-    fn new() -> ParallelN<T,At,Bt,Ct,Iota,Nthr,S>{
-        ParallelN{ child: S::new(), par_inf: Option::None,
-            _t: PhantomData, _at: PhantomData, _bt: PhantomData, _ct: PhantomData,
-            _iotat: PhantomData, _nthr: PhantomData }
+    fn new() -> ParallelN<T, At, Bt, Ct, Xt, Iota, Nthr, S>{
+        ParallelN {child: S::new(), par_inf: Option::None,
+                   _t: PhantomData, _at: PhantomData,
+                   _bt: PhantomData, _ct: PhantomData, _xt: PhantomData,
+                   _iotat: PhantomData, _nthr: PhantomData }
     }
     fn hierarchy_description( ) -> Vec<AlgorithmStep> {
         S::hierarchy_description()

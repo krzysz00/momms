@@ -1,6 +1,5 @@
 use thread_comm::ThreadInfo;
 use matrix::{Scalar,Mat};
-use super::view::{MatrixView};
 use core::marker::PhantomData;
 
 pub struct VoidMat<T: Scalar> {

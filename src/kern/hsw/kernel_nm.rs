@@ -1,33 +1,38 @@
 use matrix::{Scalar,Mat,Hierarch,Matrix,RowPanelMatrix,ColumnPanelMatrix};
 use core::marker::{PhantomData};
-use composables::{GemmNode,AlgorithmStep};
+use composables::{Gemm3Node,AlgorithmStep};
 use thread_comm::{ThreadInfo};
 use typenum::{U1,U4,U6,U8,U12,Unsigned};
 
-pub struct KernelNM<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Nr: Unsigned, Mr: Unsigned>{
+pub struct KernelNM<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>,
+                    Nr: Unsigned, Mr: Unsigned>{
     _at: PhantomData<At>,
     _bt: PhantomData<Bt>,
     _ct: PhantomData<Ct>,
+    _xt: PhantomData<Xt>,
     _t: PhantomData<T>,
     _nrt: PhantomData<Nr>,
     _mrt: PhantomData<Mr>,
 }
-impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Nr: Unsigned, Mr: Unsigned> 
-    GemmNode<T, At, Bt, Ct> for 
-    KernelNM<T, At, Bt, Ct, Nr, Mr> {
+impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>, Nr: Unsigned, Mr: Unsigned>
+    Gemm3Node<T, At, Bt, Ct, Xt> for
+    KernelNM<T, At, Bt, Ct, Xt, Nr, Mr> {
     #[inline(always)]
-    default unsafe fn run( &mut self, _a: &mut At, _b: &mut Bt, _c: &mut Ct, _thr: &ThreadInfo<T> ) -> () {
+        default unsafe fn run(&mut self, _a: &mut At, _b: &mut Bt, _c: &mut Ct,
+                              _x: &mut Xt, _thr: &ThreadInfo<T> ) -> () {
         panic!("Macrokernel general case not implemented! for NR {} MR {}", Nr::to_usize(), Mr::to_usize());
     }
-    fn new( ) -> KernelNM<T, At, Bt, Ct, Nr, Mr> { 
-        KernelNM{ _at: PhantomData, _bt: PhantomData, _ct: PhantomData, _t: PhantomData, _nrt: PhantomData, _mrt: PhantomData } 
+    fn new( ) -> KernelNM<T, At, Bt, Ct, Xt, Nr, Mr> {
+        KernelNM {_at: PhantomData, _bt: PhantomData, _ct: PhantomData,
+                  _xt: PhantomData, _t: PhantomData,
+                  _nrt: PhantomData, _mrt: PhantomData }
     }
     fn hierarchy_description( ) -> Vec<AlgorithmStep> {
         let mut desc = Vec::new();
         desc.push(AlgorithmStep::M{bsz: Mr::to_usize()});
         desc.push(AlgorithmStep::N{bsz: Nr::to_usize()});
         desc
-    }  
+    }
 }
 
 type T = f64;
@@ -143,16 +148,19 @@ impl<K: Unsigned>
     }
 }*/
 
-impl<K: Unsigned>
-    GemmNode<T, Hierarch<T, U12, K,  U1, U12>,
-                Hierarch<T, K,  U4, U4, U1>,
-                Hierarch<T, U12, U4, U4, U1>> for
+impl<Xt: Mat<T>, K: Unsigned>
+    Gemm3Node<T, Hierarch<T, U12, K,  U1, U12>,
+              Hierarch<T, K,  U4, U4, U1>,
+              Hierarch<T, U12, U4, U4, U1>, Xt> for
     KernelNM<T, Hierarch<T, U12, K,  U1, U12>,
-                Hierarch<T, K,  U4, U4, U1>,
-                Hierarch<T, U12, U4, U4, U1>, U4, U12> 
+             Hierarch<T, K,  U4, U4, U1>,
+             Hierarch<T, U12, U4, U4, U1>, Xt, U4, U12>
 {
     #[inline(always)]
-    unsafe fn run(&mut self, a: &mut Hierarch<T, U12, K, U1, U12>, b: &mut Hierarch<T, K, U4, U4, U1>, c: &mut Hierarch<T, U12, U4, U4, U1>, _thr: &ThreadInfo<T>){ 
+    unsafe fn run(&mut self, a: &mut Hierarch<T, U12, K, U1, U12>,
+                  b: &mut Hierarch<T, K, U4, U4, U1>,
+                  c: &mut Hierarch<T, U12, U4, U4, U1>,
+                  _x: &mut Xt, _thr: &ThreadInfo<T>){
         let ap0 = a.get_mut_buffer();
         let bp0 = b.get_mut_buffer();
         let cp0 = c.get_mut_buffer();
@@ -273,16 +281,20 @@ extern{
         c: *mut c_double, rs_c: int64_t, cs_c: int64_t ) -> ();
 }
 
-impl<K: Unsigned>
-    GemmNode<T, Hierarch<T, U6, K,  U1, U6>,
-                Hierarch<T, K,  U8, U8, U1>,
-                Hierarch<T, U6, U8, U8, U1>> for
+impl<Xt: Mat<f64>, K: Unsigned>
+    Gemm3Node<T, Hierarch<T, U6, K,  U1, U6>,
+              Hierarch<T, K,  U8, U8, U1>,
+              Hierarch<T, U6, U8, U8, U1>, Xt> for
     KernelNM<T, Hierarch<T, U6, K,  U1, U6>,
-                Hierarch<T, K,  U8, U8, U1>,
-                Hierarch<T, U6, U8, U8, U1>, U8, U6> 
+             Hierarch<T, K,  U8, U8, U1>,
+             Hierarch<T, U6, U8, U8, U1>, Xt, U8, U6>
 {
     #[inline(always)]
-    unsafe fn run(&mut self, a: &mut Hierarch<T, U6, K, U1, U6>, b: &mut Hierarch<T, K, U8, U8, U1>, c: &mut Hierarch<T, U6, U8, U8, U1>, _thr: &ThreadInfo<T>){ 
+    unsafe fn run(&mut self,
+                  a: &mut Hierarch<T, U6, K, U1, U6>,
+                  b: &mut Hierarch<T, K, U8, U8, U1>,
+                  c: &mut Hierarch<T, U6, U8, U8, U1>,
+                  _x: &mut Xt, _thr: &ThreadInfo<T>){
         let ap = a.get_mut_buffer();
         let bp = b.get_mut_buffer();
         let cp = c.get_mut_buffer();
@@ -324,16 +336,21 @@ impl<K: Unsigned>
     }
 }
 
-impl
-    GemmNode<T, RowPanelMatrix<T,U6>,
-                ColumnPanelMatrix<T,U8>,
-                Hierarch<T,U6,U8,U8,U1>> for 
+impl<Xt: Mat<T>>
+    Gemm3Node<T, RowPanelMatrix<T,U6>,
+              ColumnPanelMatrix<T,U8>,
+              Hierarch<T,U6,U8,U8,U1>, Xt> for
     KernelNM<T, RowPanelMatrix<T,U6>,
-                ColumnPanelMatrix<T,U8>,
-                Hierarch<T,U6,U8,U8,U1>, U8, U6>
+             ColumnPanelMatrix<T,U8>,
+             Hierarch<T,U6,U8,U8,U1>, Xt, U8, U6>
 {
     #[inline(always)]
-    unsafe fn run(&mut self, a: &mut RowPanelMatrix<T,U6>, b: &mut ColumnPanelMatrix<T,U8>, c: &mut Hierarch<T,U6,U8,U8,U1>, _thr: &ThreadInfo<T>){ 
+    unsafe fn run(&mut self,
+                  a: &mut RowPanelMatrix<T,U6>,
+                  b: &mut ColumnPanelMatrix<T,U8>,
+                  c: &mut Hierarch<T,U6,U8,U8,U1>,
+                  _x: &mut Xt,
+                  _thr: &ThreadInfo<T>){
         let ap = a.get_mut_buffer();
         let bp = b.get_mut_buffer();
         let cp = c.get_mut_buffer();
@@ -351,7 +368,7 @@ impl
         let mut b_jr = bp;
         let mut jr : isize = 0;
         while jr < n {
-            
+
             let mut a_ir = ap;
             let mut ir : isize = 0;
             while ir < m {
@@ -377,15 +394,17 @@ impl
     }
 }
 
-impl GemmNode<T, RowPanelMatrix<T,U6>,
-                 ColumnPanelMatrix<T,U8>,
-                 Matrix<T>> for 
+impl<Xt: Mat<T>> Gemm3Node<T, RowPanelMatrix<T,U6>,
+                           ColumnPanelMatrix<T,U8>,
+                           Matrix<T>, Xt> for
     KernelNM<T, RowPanelMatrix<T,U6>,
                 ColumnPanelMatrix<T,U8>,
-                Matrix<T>, U8, U6>
+                Matrix<T>, Xt, U8, U6>
 {
     #[inline(always)]
-    unsafe fn run(&mut self, a: &mut RowPanelMatrix<T,U6>, b: &mut ColumnPanelMatrix<T,U8>, c: &mut Matrix<T>, _thr: &ThreadInfo<T>){ 
+    unsafe fn run(&mut self, a: &mut RowPanelMatrix<T,U6>,
+                  b: &mut ColumnPanelMatrix<T,U8>,
+                  c: &mut Matrix<T>, _x: &mut Xt, _thr: &ThreadInfo<T>) {
         let ap = a.get_mut_buffer();
         let bp = b.get_mut_buffer();
         let cp = c.get_mut_buffer();
@@ -406,7 +425,7 @@ impl GemmNode<T, RowPanelMatrix<T,U6>,
         let mut b_jr = bp;
         let mut jr : isize = 0;
         while jr < n {
-            
+
             let mut a_ir = ap;
             let mut c_ir = c_jr;
             let mut ir : isize = 0;
@@ -439,16 +458,21 @@ extern{
         c: *mut c_double, rs_c: int64_t, cs_c: int64_t ) -> ();
 }
 
-impl <K: Unsigned>
-    GemmNode<T, Hierarch<T, U4, K,  U1, U4>,
-                Hierarch<T, K,  U12, U12, U1>,
-                Hierarch<T, U4, U12, U12, U1>> for
+impl<Xt: Mat<f64>, K: Unsigned>
+    Gemm3Node<T, Hierarch<T, U4, K,  U1, U4>,
+              Hierarch<T, K,  U12, U12, U1>,
+              Hierarch<T, U4, U12, U12, U1>, Xt> for
     KernelNM<T, Hierarch<T, U4, K,  U1, U4>,
                 Hierarch<T, K,  U12, U12, U1>,
-                Hierarch<T, U4, U12, U12, U1>, U12, U4> 
+                Hierarch<T, U4, U12, U12, U1>, Xt, U12, U4>
 {
     #[inline(always)]
-    unsafe fn run(&mut self, a: &mut Hierarch<T, U4, K, U1, U4>, b: &mut Hierarch<T, K, U12, U12, U1>, c: &mut Hierarch<T, U4, U12, U12, U1>, _thr: &ThreadInfo<T>){ 
+    unsafe fn run(&mut self,
+                  a: &mut Hierarch<T, U4, K, U1, U4>,
+                  b: &mut Hierarch<T, K, U12, U12, U1>,
+                  c: &mut Hierarch<T, U4, U12, U12, U1>,
+                  _x: &mut Xt,
+                  _thr: &ThreadInfo<T>) {
         let ap = a.get_mut_buffer();
         let bp = b.get_mut_buffer();
         let cp = c.get_mut_buffer();

@@ -10,8 +10,8 @@ use self::libc::{c_double, int64_t, c_char};
 use typenum::{U1};
 
 use gemm_oxide::kern::hsw::{Ukernel, KernelMN, KernelNM, GemvAL1};
-pub use gemm_oxide::matrix::{Scalar, Mat, ColumnPanelMatrix, RowPanelMatrix, Matrix, Hierarch};
-pub use gemm_oxide::composables::{GemmNode, AlgorithmStep, PartM, PartN, PartK, PackA, PackB, SpawnThreads, ParallelM, ParallelN, Nwayer};
+pub use gemm_oxide::matrix::{Scalar, Mat, ColumnPanelMatrix, RowPanelMatrix, Matrix, VoidMat};
+pub use gemm_oxide::composables::{Gemm3Node, AlgorithmStep, PartM, PartN, PartK, PackA, PackB, SpawnThreads, ParallelM, ParallelN, Nwayer};
 pub use gemm_oxide::thread_comm::ThreadInfo;
 pub use gemm_oxide::triple_loop::TripleLoop;
 
@@ -19,7 +19,7 @@ pub use gemm_oxide::triple_loop::TripleLoop;
 extern{
     fn dgemm_( transa: *const c_char, transb: *const c_char,
                m: *const int64_t, n: *const int64_t, k: *const int64_t,
-               alpha: *const c_double, 
+               alpha: *const c_double,
                a: *const c_double, lda: *const int64_t,
                b: *const c_double, ldb: *const int64_t,
                beta: *const c_double,
@@ -67,6 +67,7 @@ fn test_c_eq_a_b<T:Scalar, At:Mat<T>, Bt:Mat<T>, Ct:Mat<T>>( a: &mut At, b: &mut
     let mut bw : Matrix<T> = Matrix::new(k, 1);
     let mut abw : Matrix<T> = Matrix::new(m, 1);
     let mut cw : Matrix<T> = Matrix::new(m, 1);
+    let mut x : VoidMat<T> = VoidMat::new();
     w.fill_rand();
     cw.fill_zero();
     bw.fill_zero();
@@ -74,13 +75,13 @@ fn test_c_eq_a_b<T:Scalar, At:Mat<T>, Bt:Mat<T>, Ct:Mat<T>>( a: &mut At, b: &mut
 
     //Do bw = Bw, then abw = A*(Bw)
     unsafe {
-        ref_gemm.run( b, &mut w, &mut bw, &ThreadInfo::single_thread() );
-        ref_gemm.run( a, &mut bw, &mut abw, &ThreadInfo::single_thread() );
+        ref_gemm.run( b, &mut w, &mut bw, &mut x, &ThreadInfo::single_thread() );
+        ref_gemm.run( a, &mut bw, &mut abw, &mut x,  &ThreadInfo::single_thread() );
     }
 
     //Do cw = Cw
     unsafe {
-        ref_gemm.run( c, &mut w, &mut cw, &ThreadInfo::single_thread() );
+        ref_gemm.run( c, &mut w, &mut cw, &mut x, &ThreadInfo::single_thread() );
     }
 
     //Cw -= abw
@@ -130,12 +131,12 @@ fn test_gemm() {
     type MR = typenum::U6;
 
     type Goto<T: Scalar, MTA: Mat<T>, MTB: Mat<T>, MTC: Mat<T>>
-        = PartN<T, MTA, MTB, MTC, NC,
-          PartK<T, MTA, MTB, MTC, KC,
-          PackB<T, MTA, MTB, MTC, ColumnPanelMatrix<T,NR>,
-          PartM<T, MTA, ColumnPanelMatrix<T,NR>, MTC, MC,
-          PackA<T, MTA, ColumnPanelMatrix<T,NR>, MTC, RowPanelMatrix<T,MR>,
-          KernelNM<T, RowPanelMatrix<T,MR>, ColumnPanelMatrix<T,NR>, MTC, NR, MR>>>>>>;
+        = PartN<T, MTA, MTB, MTC, VoidMat<T>, NC,
+          PartK<T, MTA, MTB, MTC, VoidMat<T>, KC,
+          PackB<T, MTA, MTB, MTC, VoidMat<T>, ColumnPanelMatrix<T,NR>,
+          PartM<T, MTA, ColumnPanelMatrix<T,NR>, MTC, VoidMat<T>, MC,
+          PackA<T, MTA, ColumnPanelMatrix<T,NR>, MTC, VoidMat<T>, RowPanelMatrix<T,MR>,
+          KernelNM<T, RowPanelMatrix<T,MR>, ColumnPanelMatrix<T,NR>, MTC, VoidMat<T>, NR, MR>>>>>>;
 
     type GotoPlain = Goto<f64, Matrix<f64>, Matrix<f64>, Matrix<f64>>;
 
@@ -160,6 +161,7 @@ fn test_gemm() {
             let mut a : Matrix<f64> = Matrix::new(m, k);
             let mut b : Matrix<f64> = Matrix::new(k, n);
             let mut c : Matrix<f64> = Matrix::new(m, n);
+            let mut x : VoidMat<f64> = VoidMat::new();
             a.fill_rand(); b.fill_rand(); c.fill_zero();
 
             c.transpose();
@@ -167,7 +169,7 @@ fn test_gemm() {
 
             let mut start = Instant::now();
             unsafe {
-                goto.run(&mut a, &mut b, &mut c, &ThreadInfo::single_thread() );
+                goto.run(&mut a, &mut b, &mut c, &mut x, &ThreadInfo::single_thread() );
             }
             best_time = best_time.min(dur_seconds(start));
             let err = test_c_eq_a_b( &mut a, &mut b, &mut c);

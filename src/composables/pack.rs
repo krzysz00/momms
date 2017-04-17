@@ -5,7 +5,7 @@ use core::cmp;
 use matrix::{Scalar,Mat,ColumnPanelMatrix,RowPanelMatrix,Matrix,ResizableBuffer};
 use typenum::Unsigned;
 use thread_comm::ThreadInfo;
-use composables::{GemmNode,AlgorithmStep};
+use composables::{Gemm3Node,AlgorithmStep};
 
 //This trait exists so that Packer has a type to specialize over.
 //Yes this is stupid.
@@ -21,11 +21,11 @@ pub struct Packer<T: Scalar, At: Mat<T>, Apt: Mat<T>> {
 }
 impl<T: Scalar, At: Mat<T>, Apt: Mat<T>> Packer<T, At, Apt> {
     fn new() -> Packer<T, At, Apt> {
-        Packer{ _t: PhantomData, _at: PhantomData, _apt: PhantomData } 
+        Packer{ _t: PhantomData, _at: PhantomData, _apt: PhantomData }
     }
 }
-    
-impl<T: Scalar, At: Mat<T>, Apt: Mat<T>> Copier<T, At, Apt> 
+
+impl<T: Scalar, At: Mat<T>, Apt: Mat<T>> Copier<T, At, Apt>
     for Packer<T, At, Apt> {
     default fn pack( &self, a: &At, a_pack: &mut Apt, thr: &ThreadInfo<T> ) {
         if a_pack.width() <= 0 || a_pack.height() <= 0 {
@@ -36,14 +36,14 @@ impl<T: Scalar, At: Mat<T>, Apt: Mat<T>> Copier<T, At, Apt>
         let end = cmp::min(a.width(), start+cols_per_thread);
 
         for x in start..end {
-            for y in 0..a.height() { 
+            for y in 0..a.height() {
                 a_pack.set(y, x, a.get(y,x));
             }
         }
     }
 }
 
-impl<T: Scalar, PW: Unsigned> Copier<T, Matrix<T>, ColumnPanelMatrix<T, PW>> 
+impl<T: Scalar, PW: Unsigned> Copier<T, Matrix<T>, ColumnPanelMatrix<T, PW>>
     for Packer<T, Matrix<T>, ColumnPanelMatrix<T, PW>> {
     fn pack( &self, a: &Matrix<T>, a_pack: &mut ColumnPanelMatrix<T, PW>, thr: &ThreadInfo<T> ) {
         if a_pack.width() <= 0 || a_pack.height() <= 0 {
@@ -53,7 +53,7 @@ impl<T: Scalar, PW: Unsigned> Copier<T, Matrix<T>, ColumnPanelMatrix<T, PW>>
             let ap = a.get_buffer();
             let cs_a = a.get_column_stride();
             let rs_a = a.get_row_stride();
-            
+
             let n_panels = (a_pack.width()-1) / PW::to_usize() + 1;
             let panels_per_thread = (n_panels-1) / thr.num_threads() + 1;
             let start = panels_per_thread * thr.thread_id();
@@ -76,7 +76,7 @@ impl<T: Scalar, PW: Unsigned> Copier<T, Matrix<T>, ColumnPanelMatrix<T, PW>>
             } else {
                 PW::to_usize()
             };
-            let p = a_pack.get_panel(end-1); 
+            let p = a_pack.get_panel(end-1);
             let ap1 = ap.offset(((end-1) * PW::to_usize() * cs_a) as isize);
             for y in 0..a_pack.height() {
                 for i in 0..last_panel_w {
@@ -105,8 +105,8 @@ impl<T: Scalar, PH: Unsigned> Copier<T, Matrix<T>, RowPanelMatrix<T, PH>>
             let end = cmp::min(n_panels, start+panels_per_thread);
 
             for panel in start..end-1 {
-                let p = a_pack.get_panel(panel); 
-                let ap1 = ap.offset((panel * PH::to_usize() * rs_a) as isize); 
+                let p = a_pack.get_panel(panel);
+                let ap1 = ap.offset((panel * PH::to_usize() * rs_a) as isize);
 
                 for x in 0..a_pack.width() {
                     for i in 0..PH::to_usize() {
@@ -121,8 +121,8 @@ impl<T: Scalar, PH: Unsigned> Copier<T, Matrix<T>, RowPanelMatrix<T, PH>>
             } else {
                 PH::to_usize()
             };
-            let p = a_pack.get_panel(end-1); 
-            let ap1 = ap.offset(((end-1) * PH::to_usize() * rs_a) as isize); 
+            let p = a_pack.get_panel(end-1);
+            let ap1 = ap.offset(((end-1) * PH::to_usize() * rs_a) as isize);
             for x in 0..a_pack.width() {
                 for i in 0..last_panel_h {
                     let alpha = ptr::read(ap1.offset((x*cs_a + i*rs_a)as isize));
@@ -133,22 +133,28 @@ impl<T: Scalar, PH: Unsigned> Copier<T, Matrix<T>, RowPanelMatrix<T, PH>>
     }
 }
 
-pub struct PackA<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, APt: Mat<T>, 
-    S: GemmNode<T, APt, Bt, Ct>> {
+pub struct PackA<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>,
+                 APt: Mat<T>,
+                 S: Gemm3Node<T, APt, Bt, Ct, Xt>> {
     child: S,
     packer: Packer<T, At, APt>,
     a_pack: APt,
     _bt: PhantomData<Bt>,
     _ct: PhantomData<Ct>,
-} 
-impl<T: Scalar,At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, APt: Mat<T>, S: GemmNode<T, APt, Bt, Ct>> PackA <T,At,Bt,Ct,APt,S> 
+    _xt: PhantomData<Xt>,
+}
+
+impl<T: Scalar,At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>,
+     APt: Mat<T>, S: Gemm3Node<T, APt, Bt, Ct, Xt>> PackA<T, At, Bt, Ct, Xt, APt, S>
     where APt: ResizableBuffer<T> {
 }
-impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, APt: Mat<T>, S: GemmNode<T, APt, Bt, Ct>>
-    GemmNode<T, At, Bt, Ct> for PackA<T, At, Bt, Ct, APt, S>
+impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>,
+     APt: Mat<T>, S: Gemm3Node<T, APt, Bt, Ct, Xt>>
+    Gemm3Node<T, At, Bt, Ct, Xt> for PackA<T, At, Bt, Ct, Xt, APt, S>
     where APt: ResizableBuffer<T> {
     #[inline(always)]
-    unsafe fn run( &mut self, a: &mut At, b: &mut Bt, c:&mut Ct, thr: &ThreadInfo<T> ) -> () {
+    unsafe fn run( &mut self, a: &mut At, b: &mut Bt, c: &mut Ct, x: &mut Xt,
+                    thr: &ThreadInfo<T> ) -> () {
         thr.barrier();
         if self.a_pack.capacity() < APt::capacity_for(a) {
             if thr.thread_id() == 0 {
@@ -162,7 +168,7 @@ impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, APt: Mat<T>, S: GemmNode<T, 
         self.a_pack.resize_to( a );
         self.packer.pack( a, &mut self.a_pack, thr );
         thr.barrier();
-        self.child.run(&mut self.a_pack, b, c, thr);
+        self.child.run(&mut self.a_pack, b, c, x, thr);
     }
 /*    #[inline(always)]
     unsafe fn shadow( &self ) -> Self where Self: Sized {
@@ -171,32 +177,36 @@ impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, APt: Mat<T>, S: GemmNode<T, 
                packer: Packer::new(),
                _bt:PhantomData, _ct: PhantomData }
     }*/
-    fn new( ) -> PackA<T, At, Bt, Ct, APt, S>{
-        PackA{ child: S::new(), 
+    fn new( ) -> PackA<T, At, Bt, Ct, Xt, APt, S>{
+        PackA{ child: S::new(),
                a_pack: APt::empty(), packer: Packer::new(),
-               _bt: PhantomData, _ct: PhantomData }
+               _bt: PhantomData, _ct: PhantomData, _xt: PhantomData, }
     }
     fn hierarchy_description( ) -> Vec<AlgorithmStep> {
         S::hierarchy_description()
-    } 
+    }
 }
 
-pub struct PackB<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, BPt: Mat<T>, 
-    S: GemmNode<T, At, BPt, Ct>> {
+pub struct PackB<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>,
+                 BPt: Mat<T>, S: Gemm3Node<T, At, BPt, Ct, Xt>> {
     child: S,
     packer: Packer<T, Bt, BPt>,
     b_pack: BPt,
     _at: PhantomData<At>,
     _ct: PhantomData<Ct>,
-} 
-impl<T: Scalar,At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, BPt: Mat<T>, S: GemmNode<T, At, BPt, Ct>> PackB <T,At,Bt,Ct,BPt,S> 
+    _xt: PhantomData<Xt>,
+}
+impl<T: Scalar,At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>,
+     BPt: Mat<T>, S: Gemm3Node<T, At, BPt, Ct, Xt>> PackB<T, At, Bt, Ct, Xt, BPt, S>
     where BPt: ResizableBuffer<T> {
 }
-impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, BPt: Mat<T>, S: GemmNode<T, At, BPt, Ct>>
-    GemmNode<T, At, Bt, Ct> for PackB<T, At, Bt, Ct, BPt, S>
+impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>,
+     BPt: Mat<T>, S: Gemm3Node<T, At, BPt, Ct, Xt>>
+    Gemm3Node<T, At, Bt, Ct, Xt> for PackB<T, At, Bt, Ct, Xt, BPt, S>
     where BPt: ResizableBuffer<T> {
     #[inline(always)]
-    unsafe fn run( &mut self, a: &mut At, b: &mut Bt, c:&mut Ct, thr: &ThreadInfo<T> ) -> () {
+    unsafe fn run( &mut self, a: &mut At, b: &mut Bt, c: &mut Ct, x: &mut Xt,
+                    thr: &ThreadInfo<T> ) -> () {
         thr.barrier();
         if self.b_pack.capacity() < BPt::capacity_for(b) {
             if thr.thread_id() == 0 {
@@ -210,7 +220,7 @@ impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, BPt: Mat<T>, S: GemmNode<T, 
         self.b_pack.resize_to( b );
         self.packer.pack( b, &mut self.b_pack, thr );
         thr.barrier();
-        self.child.run(a, &mut self.b_pack, c, thr);
+        self.child.run(a, &mut self.b_pack, c, x, thr);
     }
 /*    #[inline(always)]
     unsafe fn shadow( &self ) -> Self where Self: Sized {
@@ -219,12 +229,12 @@ impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, BPt: Mat<T>, S: GemmNode<T, 
                packer: Packer::new(),
                _at:PhantomData, _ct: PhantomData }
     }*/
-    fn new( ) -> PackB<T, At, Bt, Ct, BPt, S> {
-        PackB{ child: S::new(), 
+    fn new( ) -> PackB<T, At, Bt, Ct, Xt, BPt, S> {
+        PackB{ child: S::new(),
                b_pack: BPt::empty(), packer: Packer::new(),
-               _at:PhantomData, _ct: PhantomData }
+               _at:PhantomData, _ct: PhantomData, _xt: PhantomData }
     }
     fn hierarchy_description( ) -> Vec<AlgorithmStep> {
         S::hierarchy_description()
-    } 
+    }
 }

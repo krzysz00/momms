@@ -5,7 +5,7 @@ extern crate hwloc;
 use matrix::{Scalar,Mat};
 use core::marker::{PhantomData};
 use thread_comm::{ThreadComm,ThreadInfo};
-use composables::{GemmNode,AlgorithmStep};
+use composables::{Gemm3Node,AlgorithmStep};
 
 use std::sync::{Arc,Mutex};
 use std::cell::{RefCell};
@@ -22,7 +22,8 @@ fn cpuset_for_core(topology: &Topology, idx: usize) -> CpuSet {
     }
 }
 
-pub struct SpawnThreads<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, S: GemmNode<T, At, Bt, Ct>> 
+pub struct SpawnThreads<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>,
+                        S: Gemm3Node<T, At, Bt, Ct, Xt>>
     where S: Send {
     n_threads: usize,
     pool: Pool,
@@ -33,11 +34,13 @@ pub struct SpawnThreads<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, S: GemmNo
     _at: PhantomData<At>,
     _bt: PhantomData<Bt>,
     _ct: PhantomData<Ct>,
+    _xt: PhantomData<Xt>,
 }
-impl<T: Scalar,At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, S: GemmNode<T, At, Bt, Ct>> 
-    SpawnThreads <T,At,Bt,Ct,S> 
+impl<T: Scalar,At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>,
+     S: Gemm3Node<T, At, Bt, Ct, Xt>>
+    SpawnThreads <T, At, Bt, Ct, Xt, S>
     where S: Send {
-    pub fn set_n_threads(&mut self, n_threads: usize){ 
+    pub fn set_n_threads(&mut self, n_threads: usize){
         self.n_threads = n_threads;
         self.pool = Pool::new(n_threads as u32);
 
@@ -73,11 +76,13 @@ impl<T: Scalar,At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, S: GemmNode<T, At, Bt, Ct>>
         });
     }
 }
-impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, S: GemmNode<T, At, Bt, Ct>>
-    GemmNode<T, At, Bt, Ct> for SpawnThreads<T, At, Bt, Ct, S> 
+impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>,
+     S: Gemm3Node<T, At, Bt, Ct, Xt>>
+    Gemm3Node<T, At, Bt, Ct, Xt> for SpawnThreads<T, At, Bt, Ct, Xt, S>
     where S: Send {
     #[inline(always)]
-    unsafe fn run(&mut self, a: &mut At, b: &mut Bt, c:&mut Ct, _thr: &ThreadInfo<T>) -> () {
+    unsafe fn run(&mut self, a: &mut At, b: &mut Bt, c: &mut Ct, x: &mut Xt,
+                  _thr: &ThreadInfo<T>) -> () {
         //Should the thread communicator be cached???
         //Probably this is cheap so don't worry about it
         let global_comm : Arc<ThreadComm<T>> = Arc::new(ThreadComm::new(self.n_threads));
@@ -86,13 +91,14 @@ impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, S: GemmNode<T, At, Bt, Ct>>
         //because self.pool borrows self as mutable
         let num_threads = self.n_threads;
         let cache = self.cntl_cache.clone();
-    
+
         self.pool.scoped(|scope| {
             for id in 0..num_threads {
                 //Make some shallow copies because of borrow rules
                 let mut my_a = a.make_alias();
                 let mut my_b = b.make_alias();
                 let mut my_c = c.make_alias();
+                let mut my_x = x.make_alias();
                 let my_comm  = global_comm.clone();
                 let my_cache = cache.clone();
 
@@ -102,20 +108,22 @@ impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, S: GemmNode<T, At, Bt, Ct>>
 
                     //We need to have a barrier here to force multiple threads to actually spawn.
                     thr.barrier();
-                    
+
                     //Read this thread's cached control tree
                     let cntl_tree_cell = my_cache.get_or(|| Box::new(RefCell::new(S::new())));
 
                     //Run subproblem
-                    cntl_tree_cell.borrow_mut().run(&mut my_a, &mut my_b, &mut my_c, &thr);
+                    cntl_tree_cell.borrow_mut().run(&mut my_a, &mut my_b, &mut my_c, &mut my_x, &thr);
                 });
             }
         });
     }
-    fn new() -> SpawnThreads<T, At, Bt, Ct, S>{
+    fn new() -> SpawnThreads<T, At, Bt, Ct, Xt, S>{
         SpawnThreads{ n_threads : 1, pool: Pool::new(1),
                  cntl_cache: Arc::new(ThreadLocal::new()),
-                 _t: PhantomData, _at:PhantomData, _bt: PhantomData, _ct: PhantomData }
+                      _t: PhantomData, _at:PhantomData,
+                      _bt: PhantomData, _ct: PhantomData,
+                      _xt: PhantomData, }
     }
     fn hierarchy_description( ) -> Vec<AlgorithmStep> {
         S::hierarchy_description()

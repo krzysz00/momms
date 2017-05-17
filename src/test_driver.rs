@@ -16,7 +16,7 @@ pub use gemm_oxide::thread_comm::ThreadInfo;
 pub use gemm_oxide::triple_loop::TripleLoop;
 
 
-extern{
+/* extern{
     fn dgemm_( transa: *const c_char, transb: *const c_char,
                m: *const int64_t, n: *const int64_t, k: *const int64_t,
                alpha: *const c_double,
@@ -55,38 +55,43 @@ fn blas_dgemm( a: &mut Matrix<f64>, b: &mut Matrix<f64>, c: &mut Matrix<f64> )
                 cp as *mut c_double, &ldc );
     }
 }
-
-fn test_c_eq_a_b<T:Scalar, At:Mat<T>, Bt:Mat<T>, Ct:Mat<T>>( a: &mut At, b: &mut Bt, c: &mut Ct ) -> T {
+*/
+fn test_d_eq_a_b_c<T:Scalar, At: Mat<T>, Bt: Mat<T>,
+                   Ct: Mat<T>, Dt: Mat<T>>(a: &mut At, b: &mut Bt, c: &mut Ct, d: &mut Dt) -> T {
     let mut ref_gemm : TripleLoop = TripleLoop{};
 
-    let m = c.height();
-    let n = b.width();
+    let m = d.height();
+    let n = c.width();
+    let l = b.width();
     let k = a.width();
 
-    let mut w : Matrix<T> = Matrix::new(n, 1);
-    let mut bw : Matrix<T> = Matrix::new(k, 1);
-    let mut abw : Matrix<T> = Matrix::new(m, 1);
-    let mut cw : Matrix<T> = Matrix::new(m, 1);
-    let mut x : VoidMat<T> = VoidMat::new();
+    let mut w: Matrix<T> = Matrix::new(n, 1);
+    let mut cw: Matrix<T> = Matrix::new(l, 1);
+    let mut bcw: Matrix<T> = Matrix::new(k, 1);
+    let mut abcw: Matrix<T> = Matrix::new(m, 1);
+    let mut dw: Matrix<T> = Matrix::new(m, 1);
+    let mut x: VoidMat<T> = VoidMat::new();
     w.fill_rand();
+    dw.fill_zero();
     cw.fill_zero();
-    bw.fill_zero();
-    abw.fill_zero();
+    bcw.fill_zero();
+    abcw.fill_zero();
 
-    //Do bw = Bw, then abw = A*(Bw)
+    //Do cw = Cw, then, bcw = B * (Cw), then abcw = A * (B * (Cw))
     unsafe {
-        ref_gemm.run( b, &mut w, &mut bw, &mut x, &ThreadInfo::single_thread() );
-        ref_gemm.run( a, &mut bw, &mut abw, &mut x,  &ThreadInfo::single_thread() );
+        ref_gemm.run(c, &mut w, &mut cw, &mut x, &ThreadInfo::single_thread() );
+        ref_gemm.run(b, &mut cw, &mut bcw, &mut x, &ThreadInfo::single_thread() );
+        ref_gemm.run(a, &mut bcw, &mut abcw, &mut x,  &ThreadInfo::single_thread() );
     }
 
-    //Do cw = Cw
+    //Do dw = Dw
     unsafe {
-        ref_gemm.run( c, &mut w, &mut cw, &mut x, &ThreadInfo::single_thread() );
+        ref_gemm.run(d, &mut w, &mut dw, &mut x, &ThreadInfo::single_thread() );
     }
 
-    //Cw -= abw
-    cw.axpy( T::zero() - T::one(), &abw );
-    cw.frosqr()
+    //Dw -= abcw
+    dw.axpy(T::zero() - T::one(), &abcw);
+    dw.frosqr()
 }
 
 fn dur_seconds(start: Instant) -> f64 {
@@ -96,8 +101,13 @@ fn dur_seconds(start: Instant) -> f64 {
     time_nanos / 1E9 + time_secs
 }
 
-fn gflops(m: usize, n: usize, k: usize, seconds: f64) -> f64 {
-    let nflops = (m * n * k) as f64;
+fn gflops_ab(m: usize, n: usize, k: usize, l: usize, seconds: f64) -> f64 {
+    let nflops = (m * k * l + m * l * n) as f64;
+    2.0 * nflops / seconds / 1E9
+}
+
+fn gflops_bc(m: usize, n: usize, k: usize, l: usize, seconds: f64) -> f64 {
+    let nflops = (k * l * n + m * k * n) as f64;
     2.0 * nflops / seconds / 1E9
 }
 
@@ -122,7 +132,7 @@ fn flush_cache(arr: &mut Vec<f64> ) {
     }
 }
 
-fn test_gemm() {
+fn test_gemm3() {
     use typenum::{UInt, B0};
     type NC = UInt<UInt<typenum::U1020, B0>, B0>;
     type KC = typenum::U256;
@@ -150,48 +160,48 @@ fn test_gemm() {
 
     //pin_to_core(0);
     for index in 1..64 {
-        let mut best_time: f64 = 9999999999.0;
-        let mut best_time_blis: f64 = 9999999999.0;
+        let mut best_time: f64 = -1.0;//9999999999.0;
+        let mut best_time_chain: f64 = 9999999999.0;
         let mut worst_err: f64 = 0.0;
         let size = index * 16;
-        let (m, n, k) = (size, size, size);
+        let (m, n, k, l) = (size, size, size, size);
 
         let n_reps = 5;
         for _ in 0..n_reps {
-            let mut a : Matrix<f64> = Matrix::new(m, k);
-            let mut b : Matrix<f64> = Matrix::new(k, n);
-            let mut c : Matrix<f64> = Matrix::new(m, n);
-            let mut x : VoidMat<f64> = VoidMat::new();
-            a.fill_rand(); b.fill_rand(); c.fill_zero();
+            let mut a: Matrix<f64> = Matrix::new(m, k);
+            let mut b: Matrix<f64> = Matrix::new(k, l);
+            let mut c: Matrix<f64> = Matrix::new(l, n);
+            let mut d: Matrix<f64> = Matrix::new_row_major(m, n);
+            let mut x: VoidMat<f64> = VoidMat::new();
+            a.fill_rand(); b.fill_rand(); c.fill_rand(); d.fill_zero();
 
-            c.transpose();
             flush_cache(&mut flusher);
 
             let mut start = Instant::now();
+            let mut tmp: Matrix<f64> = Matrix::new_row_major(k, n);
+            tmp.fill_zero();
             unsafe {
-                goto.run(&mut a, &mut b, &mut c, &mut x, &ThreadInfo::single_thread() );
+                goto.run(&mut b, &mut c, &mut tmp, &mut x, &ThreadInfo::single_thread());
+                goto.run(&mut a, &mut tmp, &mut d, &mut x, &ThreadInfo::single_thread());
             }
-            best_time = best_time.min(dur_seconds(start));
-            let err = test_c_eq_a_b( &mut a, &mut b, &mut c);
+            ::std::mem::drop(tmp);
+            best_time_chain = best_time_chain.min(dur_seconds(start));
+            let err = test_d_eq_a_b_c(&mut a, &mut b, &mut c, &mut d);
             worst_err = worst_err.max(err);
 
-            c.transpose();
             flush_cache(&mut flusher);
 
             start = Instant::now();
-            blas_dgemm( &mut a, &mut b, &mut c);
-            best_time_blis = best_time_blis.min(dur_seconds(start));
         }
-        println!("{}\t{}\t{}\t{}\t{}\t{}",
-                 m, n, k,
-                 gflops(m,n,k,best_time),
-                 gflops(m,n,k,best_time_blis),
-                 format!("{:e}", worst_err.sqrt()));
+        println!("{}\t{}\t{}\t{}\t{}\t{}\t{:e}",
+                 m, n, k, l,
+                 gflops_bc(m,n,k,l,best_time),
+                 gflops_bc(m,n,k,l,best_time_chain),
+                 worst_err.sqrt());
     }
-
     let sum: f64 = flusher.iter().sum();
     println!("Flush value {}", sum);
 }
 fn main() {
-    test_gemm();
+    test_gemm3();
 }

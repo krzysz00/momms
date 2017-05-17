@@ -21,7 +21,7 @@ pub struct Matrix<T: Scalar> {
     is_alias: bool,
 }
 impl<T: Scalar> Matrix<T> {
-    pub fn new( h: usize, w: usize ) -> Matrix<T> {
+    pub fn new(h: usize, w: usize) -> Matrix<T> {
         assert!(mem::size_of::<T>() != 0, "Matrix can't handle ZSTs");
         unsafe { 
             let buf = heap::allocate( (h * w + 256) * mem::size_of::<T>(), 4096 );
@@ -40,21 +40,27 @@ impl<T: Scalar> Matrix<T> {
         }
     }
 
+    pub fn new_row_major(h: usize, w: usize) -> Matrix<T> {
+        let mut ret = Self::new(h, w);
+        ret.transpose();
+        ret
+    }
+
     #[inline(always)] pub fn get_row_stride( &self ) -> usize { self.row_stride }
     #[inline(always)] pub fn get_column_stride( &self ) -> usize { self.column_stride }
-    
-    pub fn transpose(&mut self)  { 
+
+    pub fn transpose(&mut self)  {
         if self.y_views.len() != 1 || self.x_views.len() != 1 { panic!("can't transpose a submatrix!") };
         let xview = self.x_views.pop().unwrap();
         let yview = self.y_views.pop().unwrap();
         self.y_views.push(xview);
         self.x_views.push(yview);
-        
+
         let tmp = self.column_stride;
         self.column_stride = self.row_stride;
         self.row_stride = tmp;
     }
-    
+
     #[inline(always)]
     pub unsafe fn get_buffer( &self ) -> *const T { 
         let y_view = self.y_views.last().unwrap();

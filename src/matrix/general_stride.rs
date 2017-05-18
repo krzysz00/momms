@@ -14,7 +14,7 @@ pub struct Matrix<T: Scalar> {
     //Stack of views of the matrix
     y_views: Vec<MatrixView>,
     x_views: Vec<MatrixView>,
-    
+
     //Strides and buffer
     row_stride: usize,
     column_stride: usize,
@@ -25,7 +25,7 @@ pub struct Matrix<T: Scalar> {
 impl<T: Scalar> Matrix<T> {
     pub fn new(h: usize, w: usize) -> Matrix<T> {
         assert!(mem::size_of::<T>() != 0, "Matrix can't handle ZSTs");
-        let buf = 
+        let buf =
             unsafe {
                 let ptr = heap::allocate(h*w * mem::size_of::<T>(), 4096);
                 assert!(!ptr.is_null(), "Could not allocate buffer for matrix!");
@@ -36,20 +36,26 @@ impl<T: Scalar> Matrix<T> {
         let mut x_views : Vec<MatrixView> = Vec::with_capacity(16);
         y_views.push(MatrixView{ offset: 0, padding: 0, iter_size: h });
         x_views.push(MatrixView{ offset: 0, padding: 0, iter_size: w });
-    
+
         Matrix{ alpha: T::one(),
                 y_views: y_views,
-                x_views: x_views, 
+                x_views: x_views,
                 row_stride: 1, column_stride: h,
                 buffer: buf as *mut _,
                 capacity: h * w,
                 is_alias: false }
     }
 
+    pub fn new_row_major(h: usize, w: usize) -> Matrix<T> {
+        let mut ret = Matrix::new(w, h);
+        ret.transpose();
+        ret
+    }
+
     #[inline(always)] pub fn get_row_stride(&self) -> usize { self.row_stride }
     #[inline(always)] pub fn get_column_stride(&self) -> usize { self.column_stride }
 
-    pub fn transpose(&mut self)  { 
+    pub fn transpose(&mut self)  {
         if self.y_views.len() != 1 || self.x_views.len() != 1 { panic!("can't transpose a submatrix!") };
         let xview = self.x_views.pop().unwrap();
         let yview = self.y_views.pop().unwrap();

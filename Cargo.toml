@@ -1,6 +1,6 @@
 [package]
 name = "gemm_oxide"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Tyler Smith <tms@cs.utexas.edu>"]
 build = "build.rs"
 
@@ -8,9 +8,9 @@ build = "build.rs"
 rand = "0.3"
 libc = "0.2.0"
 typenum = "1.3.1"
-scoped_threadpool = "0.1.7"
 thread_local = "0.2.6"
 hwloc = "0.3.0"
+threadpool = "1.3.2"
 
 [profile.release]
 lto = true
@@ -20,5 +20,12 @@ name = "gemm_oxide"
 path = "src/lib.rs"
 
 [[bin]]
-name = "test_driver"
-path = "src/test_driver.rs"
+name = "gemm3"
+path = "src/exper/gemm3.rs"
+
+[features]
+blis = []
+hsw = []
+snb = []
+asm_snippets = []
+libxsmm = []

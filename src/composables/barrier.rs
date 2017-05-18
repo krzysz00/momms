@@ -26,7 +26,7 @@ impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>,
         Barrier{child: S::new(), _t: PhantomData, _at: PhantomData,
                 _bt: PhantomData, _ct: PhantomData, _xt: PhantomData }
     }
-    fn hierarchy_description( ) -> Vec<AlgorithmStep> {
+    fn hierarchy_description() -> Vec<AlgorithmStep> {
         S::hierarchy_description()
     }
 }

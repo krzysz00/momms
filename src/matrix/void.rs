@@ -24,24 +24,6 @@ impl<T: Scalar> Mat<T> for VoidMat<T> {
     }
 
     #[inline(always)]
-    fn off_y( &self ) -> usize {
-        0
-    }
-    #[inline(always)]
-    fn off_x( &self ) -> usize {
-        0
-    }
-
-    #[inline(always)]
-    fn set_off_y( &mut self, _off_y: usize ) {}
-    #[inline(always)]
-    fn set_off_x( &mut self, _off_x: usize ) {}
-    #[inline(always)]
-    fn add_off_y( &mut self, _start: usize ) {}
-    #[inline(always)]
-    fn add_off_x( &mut self, _start: usize ) {}
-
-    #[inline(always)]
     fn iter_height( &self ) -> usize {
         0
     }
@@ -49,10 +31,6 @@ impl<T: Scalar> Mat<T> for VoidMat<T> {
     fn iter_width( &self ) -> usize {
         0
     }
-    #[inline(always)]
-    fn set_iter_height( &mut self, _iter_h: usize ) {}
-    #[inline(always)]
-    fn set_iter_width( &mut self, _iter_w: usize ) {}
 
     #[inline(always)]
     fn logical_h_padding( &self ) -> usize {
@@ -62,10 +40,14 @@ impl<T: Scalar> Mat<T> for VoidMat<T> {
     fn logical_w_padding( &self ) -> usize {
         0
     }
+
     #[inline(always)]
-    fn set_logical_h_padding( &mut self, _h_pad: usize ) {}
+    fn set_scalar(&mut self, _alpha: T) {}
+
     #[inline(always)]
-    fn set_logical_w_padding( &mut self, _w_pad: usize ) {}
+    fn get_scalar(&self) -> T {
+        T::zero()
+    }
 
     fn push_x_view( &mut self, _blksz: usize ) -> usize {
         0
@@ -79,9 +61,14 @@ impl<T: Scalar> Mat<T> for VoidMat<T> {
     #[inline(always)]
     fn pop_y_view( &mut self ) {}
 
-    fn slide_x_view_to( &mut self, _x: usize, _blksz: usize ) {}
+    fn slide_x_view_to(&mut self, _x: usize, _blksz: usize) {}
 
-    fn slide_y_view_to( &mut self, _y: usize, _blksz: usize ) {}
+    fn slide_y_view_to(&mut self, _y: usize, _blksz: usize) {}
+
+    fn push_y_split(&mut self, _start: usize, _end: usize) {}
+    fn push_x_split(&mut self, _start: usize, _end: usize) {}
+    fn pop_y_split(&mut self) {}
+    fn pop_x_split(&mut self) {}
 
     #[inline(always)]
     unsafe fn make_alias( &self ) -> Self {

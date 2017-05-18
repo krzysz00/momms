@@ -6,11 +6,10 @@
 
 extern crate core;
 extern crate typenum;
-extern crate hwloc;
 extern crate libc;
 
 pub mod matrix;
 pub mod composables;
 pub mod thread_comm;
-pub mod triple_loop;
 pub mod kern;
+pub mod util;

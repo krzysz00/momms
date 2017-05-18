@@ -1,16 +1,24 @@
-use core::ptr::{self};
+use core::{ptr,cmp};
 use core::marker::PhantomData;
-use core::cmp;
 
-use matrix::{Scalar,Mat,ColumnPanelMatrix,RowPanelMatrix,Matrix,ResizableBuffer};
+use matrix::{Scalar,Mat,ColumnPanelMatrix,RowPanelMatrix,Hierarch,Matrix,ResizableBuffer,HierarchyNode,RoCM};
 use typenum::Unsigned;
 use thread_comm::ThreadInfo;
 use composables::{Gemm3Node,AlgorithmStep};
 
+//returns (a,b)
+//a*b = nt such that a >= b
+fn decompose(nt: usize) -> (usize, usize) {
+    let mut index = f64::sqrt(nt as f64) as usize;
+    while (nt % index) != 0 { index = index - 1; }
+    (nt / index, index)
+}
+
+
 //This trait exists so that Packer has a type to specialize over.
 //Yes this is stupid.
 pub trait Copier <T: Scalar, At: Mat<T>, Apt: Mat<T>> {
-        fn pack( &self, a: &At, a_pack: &mut Apt, thr: &ThreadInfo<T> );
+    fn pack(a: &mut At, a_pack: &mut Apt, thr: &ThreadInfo<T>);
 }
 
 
@@ -19,15 +27,10 @@ pub struct Packer<T: Scalar, At: Mat<T>, Apt: Mat<T>> {
     _at: PhantomData<At>,
     _apt: PhantomData<Apt>,
 }
-impl<T: Scalar, At: Mat<T>, Apt: Mat<T>> Packer<T, At, Apt> {
-    fn new() -> Packer<T, At, Apt> {
-        Packer{ _t: PhantomData, _at: PhantomData, _apt: PhantomData }
-    }
-}
-
-impl<T: Scalar, At: Mat<T>, Apt: Mat<T>> Copier<T, At, Apt>
+//Default implementation of Packer. Uses the getters and setters of Mat<T>
+impl<T: Scalar, At: Mat<T>, Apt: Mat<T>> Copier<T, At, Apt> 
     for Packer<T, At, Apt> {
-    default fn pack( &self, a: &At, a_pack: &mut Apt, thr: &ThreadInfo<T> ) {
+    default fn pack(a: &mut At, a_pack: &mut Apt, thr: &ThreadInfo<T>) {
         if a_pack.width() <= 0 || a_pack.height() <= 0 {
             return;
         }
@@ -43,9 +46,11 @@ impl<T: Scalar, At: Mat<T>, Apt: Mat<T>> Copier<T, At, Apt>
     }
 }
 
-impl<T: Scalar, PW: Unsigned> Copier<T, Matrix<T>, ColumnPanelMatrix<T, PW>>
+//Specialized implementation of Packer for packing from general strided matrices into column panel
+//matrices
+impl<T: Scalar, PW: Unsigned> Copier<T, Matrix<T>, ColumnPanelMatrix<T, PW>> 
     for Packer<T, Matrix<T>, ColumnPanelMatrix<T, PW>> {
-    fn pack( &self, a: &Matrix<T>, a_pack: &mut ColumnPanelMatrix<T, PW>, thr: &ThreadInfo<T> ) {
+    fn pack(a: &mut Matrix<T>, a_pack: &mut ColumnPanelMatrix<T, PW>, thr: &ThreadInfo<T>) {
         if a_pack.width() <= 0 || a_pack.height() <= 0 {
             return;
         }
@@ -54,43 +59,41 @@ impl<T: Scalar, PW: Unsigned> Copier<T, Matrix<T>, ColumnPanelMatrix<T, PW>>
             let cs_a = a.get_column_stride();
             let rs_a = a.get_row_stride();
 
-            let n_panels = (a_pack.width()-1) / PW::to_usize() + 1;
-            let panels_per_thread = (n_panels-1) / thr.num_threads() + 1;
-            let start = panels_per_thread * thr.thread_id();
-            let end = cmp::min(n_panels, start+panels_per_thread);
+            let (y_nt, x_nt) = decompose(thr.num_threads());
+            let x_tid = thr.thread_id() / y_nt;
+            let y_tid = thr.thread_id() % y_nt;
 
-            for panel in start..end-1 {
+            //Figure out this thread's work in x direction
+            let n_panels = (a_pack.width()-1) / PW::to_usize() + 1;
+            let panels_per_thread = (n_panels-1) / x_nt + 1;
+            let start_panel = panels_per_thread * x_tid;
+            let end_panel = cmp::min(n_panels, start_panel+panels_per_thread);
+
+            //Figure out this thread's work in y direction
+            let rows_per_thread = (a_pack.height()-1) / y_nt + 1;
+            let start_row = rows_per_thread * y_tid;
+            let end_row = cmp::min(a_pack.height(), start_row+rows_per_thread);
+
+            for panel in start_panel..end_panel {
                 let p = a_pack.get_panel(panel);
                 let ap1 = ap.offset((panel * PW::to_usize() * cs_a) as isize);
 
-                for y in 0..a_pack.height() {
+                for y in start_row..end_row {
                     for i in 0..PW::to_usize() {
                         let alpha = ptr::read(ap1.offset((y*rs_a + i*cs_a) as isize));
-                        ptr::write( p.offset((y*PW::to_usize() + i) as isize), alpha );
+                        ptr::write(p.offset((y*PW::to_usize() + i) as isize), alpha);
                     }
-                }
-            }
-            //Handle the last panel separately, since it might have fewer than panel width number of columns
-            let last_panel_w = if end * PW::to_usize() > a_pack.width() {
-                a_pack.width() - (end-1)*PW::to_usize()
-            } else {
-                PW::to_usize()
-            };
-            let p = a_pack.get_panel(end-1);
-            let ap1 = ap.offset(((end-1) * PW::to_usize() * cs_a) as isize);
-            for y in 0..a_pack.height() {
-                for i in 0..last_panel_w {
-                    let alpha = ptr::read(ap1.offset((y*rs_a + i*cs_a)as isize));
-                    ptr::write( p.offset((y*PW::to_usize() + i) as isize), alpha );
                 }
             }
         }
     }
 }
 
+//Specialized implementation of Packer for packing from general strided matrices into row panel
+//matrices
 impl<T: Scalar, PH: Unsigned> Copier<T, Matrix<T>, RowPanelMatrix<T, PH>> 
     for Packer<T, Matrix<T>, RowPanelMatrix<T, PH>> {
-    fn pack( &self, a: &Matrix<T>, a_pack: &mut RowPanelMatrix<T, PH>, thr: &ThreadInfo<T> ) {
+    fn pack(a: &mut Matrix<T>, a_pack: &mut RowPanelMatrix<T, PH>, thr: &ThreadInfo<T>) {
         if a_pack.width() <= 0 || a_pack.height() <= 0 {
             return;
         }
@@ -99,46 +102,206 @@ impl<T: Scalar, PH: Unsigned> Copier<T, Matrix<T>, RowPanelMatrix<T, PH>>
             let cs_a = a.get_column_stride();
             let rs_a = a.get_row_stride();
 
-            let n_panels = (a_pack.height()-1) / PH::to_usize() + 1;
-            let panels_per_thread = (n_panels-1) / thr.num_threads() + 1;
-            let start = panels_per_thread * thr.thread_id();
-            let end = cmp::min(n_panels, start+panels_per_thread);
+            let (y_nt, x_nt) = decompose(thr.num_threads());
+            let x_tid = thr.thread_id() / y_nt;
+            let y_tid = thr.thread_id() % y_nt;
 
-            for panel in start..end-1 {
+            //Figure out this thread's work in y direction
+            let n_panels = (a_pack.height()-1) / PH::to_usize() + 1;
+            let panels_per_thread = (n_panels-1) / y_nt + 1;
+            let start_panel = panels_per_thread * y_tid;
+            let end_panel = cmp::min(n_panels, start_panel+panels_per_thread);
+
+            //Figure out this thread's work in x direction
+            let cols_per_thread = (a_pack.width()-1) / x_nt + 1;
+            let start_col = cols_per_thread * x_tid;
+            let end_col = cmp::min(a_pack.width(), start_col+cols_per_thread);
+
+            for panel in start_panel..end_panel {
                 let p = a_pack.get_panel(panel);
                 let ap1 = ap.offset((panel * PH::to_usize() * rs_a) as isize);
 
-                for x in 0..a_pack.width() {
+                for x in start_col..end_col {
                     for i in 0..PH::to_usize() {
                         let alpha = ptr::read(ap1.offset((x*cs_a + i*rs_a) as isize));
-                        ptr::write( p.offset((x*PH::to_usize() + i) as isize), alpha );
+                        ptr::write(p.offset((x*PH::to_usize() + i) as isize), alpha);
                     }
                 }
             }
-            //Handle the last panel separately, since it might have fewer than panel width number of columns
-            let last_panel_h = if end * PH::to_usize() > a_pack.height() {
-                a_pack.height() - (end-1)*PH::to_usize()
-            } else {
-                PH::to_usize()
-            };
-            let p = a_pack.get_panel(end-1);
-            let ap1 = ap.offset(((end-1) * PH::to_usize() * rs_a) as isize);
-            for x in 0..a_pack.width() {
-                for i in 0..last_panel_h {
-                    let alpha = ptr::read(ap1.offset((x*cs_a + i*rs_a)as isize));
-                    ptr::write( p.offset((x*PH::to_usize() + i) as isize), alpha );
-                }
+        }
+    }
+}
+
+//returns the depth and score of the level with best parallelizability
+fn score_parallelizability(m: usize, y_hier: &[HierarchyNode]) -> (usize, f64)  {
+    let mut best_depth = 0;
+    let mut best_score = 0.0;
+    let mut m_tracker = m;
+
+    for i in 0..y_hier.len() {
+        let blksz = y_hier[i].blksz;
+        let n_iter = (m_tracker as f64) / (blksz as f64);
+        let score = n_iter;
+        if score > best_score {
+            best_score = score;
+            best_depth = i;
+        }
+        m_tracker = blksz;
+    }
+    (best_depth, best_score)
+}
+
+fn pack_hier_leaf<T: Scalar, LH: Unsigned, LW: Unsigned, LRS: Unsigned, LCS: Unsigned> 
+	(a: &mut Matrix<T>, a_pack: &mut Hierarch<T, LH, LW, LRS, LCS>,
+	 x_parallelize_level: isize, x_threads: usize, x_id: usize, 
+     y_parallelize_level: isize, y_threads: usize, y_id: usize) {
+    //Parallelize Y direction
+    let mut ystart = 0;
+    let mut yend = a.height();
+    if y_parallelize_level == 0 {
+		let rows_per_thread = (a.height()-1) / y_threads + 1; // micro-panels per thread
+		ystart = rows_per_thread*y_id;
+		yend   = cmp::min(a.height(), ystart+rows_per_thread);
+    }
+    //Parallelize X direction
+    let mut xstart = 0;
+    let mut xend = a.width();
+    if x_parallelize_level == 0 {
+		let cols_per_thread = (a.width()-1) / x_threads + 1; // micro-panels per thread
+		xstart = cols_per_thread*x_id;
+		xend   = cmp::min(a.width(), xstart+cols_per_thread);
+    }
+    unsafe{
+        let cs_a = a.get_column_stride();
+        let rs_a = a.get_row_stride();
+        let ap = a.get_buffer();
+
+        let a_pack_p = a_pack.get_mut_buffer();
+
+        for y in ystart..yend {
+            for x in xstart..xend {
+                let alpha = ptr::read(ap.offset((y*rs_a + x*cs_a) as isize));
+                ptr::write(a_pack_p.offset((y*LRS::to_usize() + x*LCS::to_usize()) as isize), alpha);
             }
         }
+    }
+}
+fn pack_hier_y<T: Scalar, LH: Unsigned, LW: Unsigned, LRS: Unsigned, LCS: Unsigned> 
+    (a: &mut Matrix<T>, a_pack: &mut Hierarch<T, LH, LW, LRS, LCS>, y_hier: &[HierarchyNode], 
+    x_parallelize_level: isize, x_threads: usize, x_id: usize,
+    y_parallelize_level: isize, y_threads: usize, y_id: usize) {
+    if y_hier.len()-1 == 0 { 
+        pack_hier_leaf(a, a_pack, x_parallelize_level, x_threads, x_id, y_parallelize_level, y_threads, y_id);
+    } else {
+        let blksz = y_hier[0].blksz;
+        let m_save = a.push_y_view(blksz);
+        a_pack.push_y_view(blksz);
+        
+        let mut start = 0;
+        let mut end = m_save;
+        if y_parallelize_level == 0 {
+			let range = m_save;
+			let n_blocks = (range-1) / blksz + 1;         
+			let blocks_per_thread = (n_blocks-1) / y_threads + 1; // micro-panels per thread
+			start = blksz*blocks_per_thread*y_id;
+			end   = cmp::min(m_save, start+blksz*blocks_per_thread);
+        }
+        let mut i = start;
+        while i < end {
+            a.slide_y_view_to(i, blksz);
+            a_pack.slide_y_view_to(i, blksz);
+            
+            pack_hier_y(a, a_pack, &y_hier[1..y_hier.len()], 
+                x_parallelize_level, x_threads, x_id, 
+                y_parallelize_level-1, y_threads, y_id);
+            i += blksz;
+        }   
+        a.pop_y_view();
+        a_pack.pop_y_view();
+    }
+}
+fn pack_hier_x<T: Scalar, LH: Unsigned, LW: Unsigned, LRS: Unsigned, LCS: Unsigned> 
+    (a: &mut Matrix<T>, a_pack: &mut Hierarch<T, LH, LW, LRS, LCS>, x_hier: &[HierarchyNode], y_hier: &[HierarchyNode],
+	 x_parallelize_level: isize, x_threads: usize, x_id: usize, 
+     y_parallelize_level: isize, y_threads: usize, y_id: usize)
+{
+    if x_hier.len() - 1 == 0 {
+        pack_hier_y(a, a_pack, y_hier, x_parallelize_level, x_threads, x_id, y_parallelize_level, y_threads, y_id);
+    } else {
+        let blksz = x_hier[0].blksz;
+        let n_save = a.push_x_view(blksz);
+        a_pack.push_x_view(blksz);
+        
+        let mut start = 0;
+        let mut end = n_save;
+        if x_parallelize_level == 0 {
+			let range = n_save;
+			let n_blocks = (range-1) / blksz + 1;         
+			let blocks_per_thread = (n_blocks-1) / x_threads + 1; // micro-panels per thread
+			start = blksz*blocks_per_thread*x_id;
+			end   = cmp::min(n_save, start+blksz*blocks_per_thread);
+        }
+        let mut j = start;
+        while j < end  {
+            a.slide_x_view_to(j, blksz);
+            a_pack.slide_x_view_to(j, blksz);
+            pack_hier_x(a, a_pack, &x_hier[1..x_hier.len()], y_hier, 
+                x_parallelize_level-1, x_threads, x_id, 
+                y_parallelize_level, y_threads, y_id);
+            j += blksz;
+        }   
+        a.pop_x_view();
+        a_pack.pop_x_view();
+    }
+}
+
+//Specialized implementation of Packer for packing from Matrix<T> into Hierarch<T>
+impl<T: Scalar, LH: Unsigned, LW: Unsigned, LRS: Unsigned, LCS: Unsigned> 
+    Copier<T, Matrix<T>, Hierarch<T, LH, LW, LRS, LCS>> 
+    for Packer<T, Matrix<T>, Hierarch<T, LH, LW, LRS, LCS>> {
+    default fn pack(a: &mut Matrix<T>, a_pack: &mut Hierarch<T, LH, LW, LRS, LCS>, thr: &ThreadInfo<T>) {
+        if a_pack.width() <= 0 || a_pack.height() <= 0 {
+            return;
+        }
+
+        //Get copies of the x and y hierarchy.
+        //Since we borrow a_pack as mutable during pack_hier_x,
+        //we can't borrow x_hier and y_hier immutably so we must copy
+        let x_hier : Vec<HierarchyNode> = 
+        {
+            let tmp1 = a_pack.get_x_hierarchy();
+            let mut tmp2 : Vec<HierarchyNode> = Vec::with_capacity(tmp1.len());
+            tmp2.extend_from_slice(tmp1);
+            tmp2
+        };
+        let y_hier : Vec<HierarchyNode> = 
+        {
+            let tmp1 = a_pack.get_y_hierarchy();
+            let mut tmp2 : Vec<HierarchyNode> = Vec::with_capacity(tmp1.len());
+            tmp2.extend_from_slice(tmp1);
+            tmp2
+        };
+        let (y_depth, y_score) = score_parallelizability(a.height(), &y_hier);
+        let (x_depth, x_score) = score_parallelizability(a.width(), &x_hier);
+
+		//Figure out x and y num threads
+        let (rnt1, rnt2) = decompose(thr.num_threads());
+        let (y_nt, x_nt) = if y_score > x_score {(rnt1,rnt2)} else {(rnt2,rnt1)};
+        
+        let x_tid = thr.thread_id() / y_nt;
+        let y_tid = thr.thread_id() % y_nt;
+
+        pack_hier_x(a, a_pack, &x_hier, &y_hier, x_depth as isize, x_nt, x_tid, y_depth as isize, y_nt, y_tid);
     }
 }
 
 pub struct PackA<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>,
-                 APt: Mat<T>,
-                 S: Gemm3Node<T, APt, Bt, Ct, Xt>> {
+                 APt: Mat<T>, S: Gemm3Node<T, APt, Bt, Ct, Xt>> {
     child: S,
-    packer: Packer<T, At, APt>,
     a_pack: APt,
+    algo_desc: Vec<AlgorithmStep>, 
+    _t: PhantomData<T>,
+    _at: PhantomData<At>,
     _bt: PhantomData<Bt>,
     _ct: PhantomData<Ct>,
     _xt: PhantomData<Xt>,
@@ -153,46 +316,55 @@ impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>,
     Gemm3Node<T, At, Bt, Ct, Xt> for PackA<T, At, Bt, Ct, Xt, APt, S>
     where APt: ResizableBuffer<T> {
     #[inline(always)]
-    unsafe fn run( &mut self, a: &mut At, b: &mut Bt, c: &mut Ct, x: &mut Xt,
-                    thr: &ThreadInfo<T> ) -> () {
+    unsafe fn run(&mut self, a: &mut At, b: &mut Bt, c: &mut Ct, x: &mut Xt,
+                  thr: &ThreadInfo<T>) -> () {
+        let y_marker = AlgorithmStep::M{bsz: 0};
+        let x_marker = AlgorithmStep::K{bsz: 0};
+
+        let capacity_for_apt = APt:: capacity_for(a, y_marker, x_marker, &self.algo_desc);
         thr.barrier();
-        if self.a_pack.capacity() < APt::capacity_for(a) {
+
+        //Check if we need to resize packing buffer
+        if self.a_pack.capacity() < capacity_for_apt {
             if thr.thread_id() == 0 {
-                self.a_pack.aquire_buffer_for(APt::capacity_for(a));
+                self.a_pack.aquire_buffer_for(capacity_for_apt);
             }
             else {
-                self.a_pack.set_capacity( APt::capacity_for(a) );
+                self.a_pack.set_capacity(capacity_for_apt);
             }
-            self.a_pack.send_alias( thr );
+            self.a_pack.send_alias(thr);
         }
-        self.a_pack.resize_to( a );
-        self.packer.pack( a, &mut self.a_pack, thr );
+
+        //Logically resize the a_pack matrix
+        self.a_pack.resize_to(a, y_marker, x_marker, &self.algo_desc);
+        <Packer<T, At, APt>>::pack(a, &mut self.a_pack, thr);
         thr.barrier();
         self.child.run(&mut self.a_pack, b, c, x, thr);
     }
-/*    #[inline(always)]
-    unsafe fn shadow( &self ) -> Self where Self: Sized {
-        PackA{ child: self.child.shadow(), 
-               a_pack: APt::empty(), 
-               packer: Packer::new(),
-               _bt:PhantomData, _ct: PhantomData }
-    }*/
-    fn new( ) -> PackA<T, At, Bt, Ct, Xt, APt, S>{
-        PackA{ child: S::new(),
-               a_pack: APt::empty(), packer: Packer::new(),
-               _bt: PhantomData, _ct: PhantomData, _xt: PhantomData, }
+    fn new() -> Self {
+        let algo_desc = S::hierarchy_description();
+        let y_marker = AlgorithmStep::M{bsz: 0};
+        let x_marker = AlgorithmStep::K{bsz: 0};
+
+        PackA{ child: S::new(), 
+               a_pack: APt::empty(y_marker, x_marker, &algo_desc), algo_desc: algo_desc,
+               _t: PhantomData, _at: PhantomData,
+               _bt: PhantomData, _ct: PhantomData,
+               _xt: PhantomData }
     }
-    fn hierarchy_description( ) -> Vec<AlgorithmStep> {
+    fn hierarchy_description() -> Vec<AlgorithmStep> {
         S::hierarchy_description()
-    }
+    } 
 }
 
 pub struct PackB<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>,
                  BPt: Mat<T>, S: Gemm3Node<T, At, BPt, Ct, Xt>> {
     child: S,
-    packer: Packer<T, Bt, BPt>,
     b_pack: BPt,
+    algo_desc: Vec<AlgorithmStep>, 
+    _t: PhantomData<T>,
     _at: PhantomData<At>,
+    _bt: PhantomData<Bt>,
     _ct: PhantomData<Ct>,
     _xt: PhantomData<Xt>,
 }
@@ -205,36 +377,42 @@ impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>,
     Gemm3Node<T, At, Bt, Ct, Xt> for PackB<T, At, Bt, Ct, Xt, BPt, S>
     where BPt: ResizableBuffer<T> {
     #[inline(always)]
-    unsafe fn run( &mut self, a: &mut At, b: &mut Bt, c: &mut Ct, x: &mut Xt,
-                    thr: &ThreadInfo<T> ) -> () {
+    unsafe fn run(&mut self, a: &mut At, b: &mut Bt, c: &mut Ct, x: &mut Xt,
+                  thr: &ThreadInfo<T>) -> () {
+        let y_marker = AlgorithmStep::K{bsz: 0};
+        let x_marker = AlgorithmStep::N{bsz: 0};
+        let capacity_for_bpt = BPt:: capacity_for(b, y_marker, x_marker, &self.algo_desc);
+
         thr.barrier();
-        if self.b_pack.capacity() < BPt::capacity_for(b) {
+
+        //Check if we need to resize packing buffer
+        if self.b_pack.capacity() < capacity_for_bpt {
             if thr.thread_id() == 0 {
-                self.b_pack.aquire_buffer_for(BPt::capacity_for(b));
+                self.b_pack.aquire_buffer_for(capacity_for_bpt);
             }
             else {
-                self.b_pack.set_capacity( BPt::capacity_for(b) );
+                self.b_pack.set_capacity(capacity_for_bpt);
             }
-            self.b_pack.send_alias( thr );
+            self.b_pack.send_alias(thr);
         }
-        self.b_pack.resize_to( b );
-        self.packer.pack( b, &mut self.b_pack, thr );
+
+        //Logically resize the c_pack matrix
+        self.b_pack.resize_to(b, y_marker, x_marker, &self.algo_desc);
+        <Packer<T, Bt, BPt>>::pack(b, &mut self.b_pack, thr);
         thr.barrier();
         self.child.run(a, &mut self.b_pack, c, x, thr);
     }
-/*    #[inline(always)]
-    unsafe fn shadow( &self ) -> Self where Self: Sized {
-        PackB{ child: self.child.shadow(), 
-               b_pack: BPt::empty(), 
-               packer: Packer::new(),
-               _at:PhantomData, _ct: PhantomData }
-    }*/
-    fn new( ) -> PackB<T, At, Bt, Ct, Xt, BPt, S> {
-        PackB{ child: S::new(),
-               b_pack: BPt::empty(), packer: Packer::new(),
-               _at:PhantomData, _ct: PhantomData, _xt: PhantomData }
+    fn new() -> Self {
+        let algo_desc = S::hierarchy_description();
+        let y_marker = AlgorithmStep::K{bsz: 0};
+        let x_marker = AlgorithmStep::N{bsz: 0};
+
+        PackB{ child: S::new(), 
+               b_pack: BPt::empty(y_marker, x_marker, &algo_desc), algo_desc: algo_desc,
+               _t: PhantomData, _at: PhantomData, _bt: PhantomData,
+               _ct: PhantomData, _xt: PhantomData, }
     }
-    fn hierarchy_description( ) -> Vec<AlgorithmStep> {
+    fn hierarchy_description() -> Vec<AlgorithmStep> {
         S::hierarchy_description()
     }
 }

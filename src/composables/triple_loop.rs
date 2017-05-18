@@ -13,15 +13,11 @@ impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>>
             for z in 0..a.width() {
                 for y in 0..c.height() {
                     let t = a.get(y,z) * b.get(z,x) + c.get(y,x);
-                    c.set( y, x, t );
+                    c.set(y, x, t);
                 }
             }
         }
     }
-    fn new( ) -> Self {
-        TripleLoop{}
-    }
-    fn hierarchy_description( ) -> Vec<AlgorithmStep> {
-        Vec::new()
-    }
+    fn new() -> Self { TripleLoop{} }
+    fn hierarchy_description() -> Vec<AlgorithmStep> { Vec::new() }  
 }

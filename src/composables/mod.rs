@@ -1,4 +1,4 @@
-mod gemm3;
+//mod gemm3;
 mod part;
 mod pack;
 mod parallel_range;
@@ -8,7 +8,7 @@ mod triple_loop;
 mod unpack;
 mod fused_pack;
 
-pub use self::gemm3::{Gemm3Node,AlgorithmStep};
+//pub use self::gemm3::{Gemm3Node,AlgorithmStep};
 pub use self::part::{PartM,PartN,PartK,FirstDiffPartM,FirstDiffPartN,FirstDiffPartK};
 pub use self::pack::{PackA,PackB};
 pub use self::parallel_range::{ParallelM,ParallelN,Nwayer,TheRest,Target};
@@ -17,3 +17,21 @@ pub use self::barrier::{Barrier};
 pub use self::triple_loop::{TripleLoop};
 pub use self::unpack::{UnpackC};
 pub use self::fused_pack::{DelayedPackA,DelayedPackB,UnpairA,UnpairB,UnpairC};
+
+use matrix::{Scalar,Mat};
+use thread_comm::ThreadInfo;
+
+#[derive(Copy, Clone)]
+pub enum AlgorithmStep {
+    M { bsz: usize },
+    N { bsz: usize },
+    K { bsz: usize },
+}
+
+pub trait Gemm3Node<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>> {
+    #[inline(always)]
+    unsafe fn run(&mut self, a: &mut At, b: &mut Bt, c: &mut Ct, x: &mut Xt,
+                  thr: &ThreadInfo<T>) -> ();
+    fn new() -> Self;
+    fn hierarchy_description() -> Vec<AlgorithmStep>;
+}

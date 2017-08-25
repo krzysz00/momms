@@ -5,7 +5,7 @@ use self::alloc::heap;
 use matrix::{Scalar,Mat,RoCM};
 use super::view::{MatrixView};
 use core::{mem,ptr};
-
+use std;
 
 pub struct Matrix<T: Scalar> {
     //Matrix scalar
@@ -24,7 +24,7 @@ pub struct Matrix<T: Scalar> {
 }
 impl<T: Scalar> Matrix<T> {
     pub fn new(h: usize, w: usize) -> Matrix<T> {
-        assert!(mem::size_of::<T>() != 0, "Matrix can't handle ZSTs");
+        assert_ne!(mem::size_of::<T>(), 0, "Matrix can't handle ZSTs");
         let buf =
             unsafe {
                 let ptr = heap::allocate(h*w * mem::size_of::<T>(), 4096);
@@ -55,33 +55,15 @@ impl<T: Scalar> Matrix<T> {
     #[inline(always)] pub fn get_row_stride(&self) -> usize { self.row_stride }
     #[inline(always)] pub fn get_column_stride(&self) -> usize { self.column_stride }
 
-    pub fn transpose(&mut self)  {
+    pub fn transpose(&mut self) {
         if self.y_views.len() != 1 || self.x_views.len() != 1 { panic!("can't transpose a submatrix!") };
         let xview = self.x_views.pop().unwrap();
         let yview = self.y_views.pop().unwrap();
         self.y_views.push(xview);
         self.x_views.push(yview);
-
-        let tmp = self.column_stride;
-        self.column_stride = self.row_stride;
-        self.row_stride = tmp;
+        
+        std::mem::swap(&mut self.column_stride, &mut self.row_stride);
     }
-
-/*    #[inline(always)]
-    pub unsafe fn get_buffer(&self) -> *const T { 
-        let y_view = self.y_views.last().unwrap();
-        let x_view = self.x_views.last().unwrap();
-
-        self.buffer.offset((y_view.offset*self.row_stride + x_view.offset*self.column_stride) as isize)
-    }
-
-    #[inline(always)]
-    pub unsafe fn get_mut_buffer(&mut self) -> *mut T {
-        let y_view = self.y_views.last().unwrap();
-        let x_view = self.x_views.last().unwrap();
-
-        self.buffer.offset((y_view.offset*self.row_stride + x_view.offset*self.column_stride) as isize)
-    }*/
 }
 impl<T: Scalar> Mat<T> for Matrix<T> {
     #[inline(always)]

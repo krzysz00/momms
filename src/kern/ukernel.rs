@@ -20,8 +20,8 @@ impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>,
      Mr: Unsigned, Nr: Unsigned>
     Gemm3Node<T, At, Bt, Ct, Xt> for Ukernel<T, At, Bt, Ct, Xt, Mr, Nr> {
     #[inline(always)]
-        default unsafe fn run(&mut self, a: &mut At, b: &mut Bt, c: &mut Ct,
-                              _x: &mut Xt, _thr: &ThreadInfo<T>) -> () {
+    default unsafe fn run(&mut self, a: &mut At, b: &mut Bt, c: &mut Ct,
+                          _x: &mut Xt, _thr: &ThreadInfo<T>) -> () {
         for z in 0..a.width() {
             for y in 0..c.height() {
                 for x in 0..c.width() {
@@ -31,7 +31,7 @@ impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>, Xt: Mat<T>,
             }
         }
     }
-    fn new() -> Ukernel<T, At, Bt, Ct,Xt,  Mr, Nr> {
+    fn new() -> Self {
         let mut tmp = <Matrix<T>>::new(Nr::to_usize(), Mr::to_usize());
         tmp.transpose();
         Ukernel{ tmp: tmp, _at: PhantomData, _bt: PhantomData, _ct: PhantomData,

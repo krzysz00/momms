@@ -1,7 +1,7 @@
 extern crate alloc;
 
 use thread_comm::ThreadInfo;
-use self::alloc::heap;
+use self::alloc::heap::{Alloc,Heap};
 use matrix::{Scalar,Mat,RoCM};
 use super::view::{MatrixView};
 use core::{mem,ptr};
@@ -25,11 +25,10 @@ pub struct Matrix<T: Scalar> {
 impl<T: Scalar> Matrix<T> {
     pub fn new(h: usize, w: usize) -> Matrix<T> {
         assert_ne!(mem::size_of::<T>(), 0, "Matrix can't handle ZSTs");
+        let layout = ::util::capacity_to_aligned_layout::<T>(h * w);
         let buf =
             unsafe {
-                let ptr = heap::allocate(h*w * mem::size_of::<T>(), 4096);
-                assert!(!ptr.is_null(), "Could not allocate buffer for matrix!");
-                ptr
+                Heap.alloc(layout).expect("Could not allocate buffer for matrix!")
             };
 
         let mut y_views : Vec<MatrixView> = Vec::with_capacity(16);
@@ -234,7 +233,8 @@ impl<T:Scalar> Drop for Matrix<T> {
     fn drop(&mut self) {
         unsafe {
             if !self.is_alias {
-                heap::deallocate(self.buffer as *mut _, mem::size_of::<T>() * self.capacity, 4096);
+                let layout = ::util::capacity_to_aligned_layout::<T>(self.capacity);
+                Heap.dealloc(self.buffer as *mut _, layout);
             }
         }
     }

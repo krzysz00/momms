@@ -1,5 +1,5 @@
 #![feature(specialization)]
-#![feature(alloc, heap_api)]
+#![feature(alloc, heap_api, allocator_api)]
 #![feature(conservative_impl_trait)]
 #![feature(cfg_target_feature)]
 #![feature(asm)]

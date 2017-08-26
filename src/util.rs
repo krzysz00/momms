@@ -1,5 +1,6 @@
 extern crate hwloc;
 extern crate libc;
+extern crate alloc;
 
 use std::time::Instant;
 #[allow(unused_imports)]
@@ -11,6 +12,7 @@ use thread_comm::ThreadInfo;
 #[allow(unused_imports)]
 use matrix::{Scalar, Mat, Matrix, RoCM, VoidMat};
 use composables::{Gemm3Node, TripleLoop};
+use self::alloc::heap::Layout;
 
 #[cfg(feature="blis")]
 extern{
@@ -112,4 +114,8 @@ pub fn pin_to_core(core: usize) {
         }
     };
     let _ = topo.set_cpubind_for_thread(tid, bind_to, CPUBIND_THREAD);
+}
+
+pub fn capacity_to_aligned_layout<T>(capacity: usize) -> Layout {
+    Layout::new::<T>().repeat_packed(capacity).unwrap().align_to(4096)
 }

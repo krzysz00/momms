@@ -1,4 +1,4 @@
-extern crate gemm_oxide;
+extern crate momms;
 extern crate core;
 extern crate typenum;
 extern crate hwloc;
@@ -7,12 +7,12 @@ extern crate libc;
 use std::time::{Instant};
 use typenum::{U1};
 
-pub use gemm_oxide::matrix::{Scalar, Mat, ColumnPanelMatrix, RowPanelMatrix, Matrix, VoidMat};
-pub use gemm_oxide::composables::{Gemm3Node, AlgorithmStep, PartM, PartN, PartK, PackA, PackB,
+pub use momms::matrix::{Scalar, Mat, ColumnPanelMatrix, RowPanelMatrix, Matrix, VoidMat};
+pub use momms::composables::{Gemm3Node, AlgorithmStep, PartM, PartN, PartK, PackA, PackB,
                                   TripleLoop};
-pub use gemm_oxide::kern::{Ukernel, KernelNM};
-pub use gemm_oxide::util;
-pub use gemm_oxide::thread_comm::ThreadInfo;
+pub use momms::kern::{Ukernel, KernelNM};
+pub use momms::util;
+pub use momms::thread_comm::ThreadInfo;
 fn test_d_eq_a_b_c<T:Scalar, At: Mat<T>, Bt: Mat<T>,
                    Ct: Mat<T>, Dt: Mat<T>>(a: &mut At, b: &mut Bt, c: &mut Ct, d: &mut Dt) -> T {
     let mut ref_gemm : TripleLoop = TripleLoop{};

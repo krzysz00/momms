@@ -48,13 +48,19 @@ impl<T: Scalar> Matrix<T> {
     #[inline(always)] pub fn get_row_stride(&self) -> usize { self.row_stride }
     #[inline(always)] pub fn get_column_stride(&self) -> usize { self.column_stride }
 
+    pub fn new_row_major(h: usize, w: usize) -> Matrix<T> {
+        let mut ret = Matrix::new(w, h);
+        ret.transpose();
+        ret
+    }
+
     pub fn transpose(&mut self) {
         if self.y_views.len() != 1 || self.x_views.len() != 1 { panic!("can't transpose a submatrix!") };
         let xview = self.x_views.pop().unwrap();
         let yview = self.y_views.pop().unwrap();
         self.y_views.push(xview);
         self.x_views.push(yview);
-        
+
         std::mem::swap(&mut self.column_stride, &mut self.row_stride);
     }
 }

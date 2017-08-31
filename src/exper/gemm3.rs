@@ -85,9 +85,7 @@ fn test_gemm3() {
 
     type GotoPlain = Goto<f64, Matrix<f64>, Matrix<f64>, Matrix<f64>>;
 
-    type GotoChainedSub<'a> = Subcomputation<'a, f64,
-                                             Matrix<f64>, Matrix<f64>, Matrix<f64>,
-                                             GotoPlain>;
+    type GotoChainedSub = Subcomputation<f64, Matrix<f64>, Matrix<f64>, Matrix<f64>>;
     type GotoChained = ForceB<f64, Matrix<f64>,
                               Matrix<f64>, Matrix<f64>, Matrix<f64>,
                               Matrix<f64>, GotoPlain, GotoPlain>;
@@ -115,21 +113,18 @@ fn test_gemm3() {
             let mut c: Matrix<f64> = Matrix::new(l, n);
             let mut d: Matrix<f64> = Matrix::new_row_major(m, n);
             a.fill_rand(); b.fill_rand(); c.fill_rand(); d.fill_zero();
+            let mut tmp: Matrix<f64> = Matrix::new_row_major(k, n);
 
             flush_cache(&mut flusher);
 
-            let mut tmp: Matrix<f64> = Matrix::new_row_major(k, n);
-            {
-                let mut submat: GotoChainedSub = Subcomputation::new(&mut b, &mut c, &mut tmp);
-                let mut start = Instant::now();
-                submat.set_scalar(0.0);
-                unsafe {
-                    chained.run(&mut a, &mut submat, &mut d, &ThreadInfo::single_thread());
-                }
-                best_time = best_time.min(util::dur_seconds(start));
+            let mut submat: GotoChainedSub = Subcomputation::new(b, c, tmp);
+            let mut start = Instant::now();
+            submat.set_scalar(0.0);
+            unsafe {
+                chained.run(&mut a, &mut submat, &mut d, &ThreadInfo::single_thread());
             }
-            ::std::mem::drop(tmp);
-            let err = test_d_eq_a_b_c(&mut a, &mut b, &mut c, &mut d);
+            best_time = best_time.min(util::dur_seconds(start));
+            let err = test_d_eq_a_b_c(&mut a, &mut submat.a, &mut submat.b, &mut d);
             worst_err = worst_err.max(err);
 
             flush_cache(&mut flusher);
@@ -138,7 +133,7 @@ fn test_gemm3() {
             tmp.set_scalar(0.0);
             let mut start = Instant::now();
             unsafe {
-                stock.run(&mut b, &mut c, &mut tmp, &ThreadInfo::single_thread());
+                stock.run(&mut submat.a, &mut submat.b, &mut tmp, &ThreadInfo::single_thread());
                 stock.run(&mut a, &mut tmp, &mut d, &ThreadInfo::single_thread());
             }
             best_time_stock = best_time_stock.min(util::dur_seconds(start));

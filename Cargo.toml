@@ -21,6 +21,10 @@ name = "momms"
 path = "src/lib.rs"
 
 [[bin]]
+name = "exper_gemm3"
+path = "src/exper/gemm3.rs"
+
+[[bin]]
 name = "exper_l3"
 path = "src/exper/l3.rs"
 

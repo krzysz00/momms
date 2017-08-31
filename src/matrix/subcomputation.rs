@@ -8,29 +8,30 @@ use std::marker::PhantomData;
 // Assumes that, when force() is called, A is m by k, B is k by n, and C is m by n
 // for m and n dictated by c
 // A and B might be bigger initially, and should be partitioned to the correct size
-pub struct Subcomputation<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>,
+pub struct Subcomputation<'a, T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>,
                           Sc: GemmNode<T, At, Bt, Ct>>
-    where Sc: Send {
-    a: At,
-    b: Bt,
-    c: Ct,
+    where Sc: Send, At: 'a, Bt: 'a, Ct: 'a {
+    a: &'a mut At,
+    b: &'a mut Bt,
+    c: &'a mut Ct,
 
     subalgorithm: Sc,
     _t: PhantomData<T>,
 }
 
-impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>,
-     Sc: GemmNode<T, At, Bt, Ct>> Subcomputation<T, At, Bt, Ct, Sc>
+impl<'a, T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>,
+     Sc: GemmNode<T, At, Bt, Ct>> Subcomputation<'a, T, At, Bt, Ct, Sc>
     where Sc: Send {
 
-    pub fn new(a: At, b: Bt, c: Ct) -> Self {
+    pub fn new(a: &'a mut At, b: &'a mut Bt, c: &'a mut Ct) -> Self {
         Subcomputation {a: a, b: b, c: c,
                         subalgorithm: Sc::new(),
                         _t: PhantomData }
     }
 
-    pub unsafe fn force(&mut self, thread_info: &ThreadInfo<T>) {
-        self.subalgorithm.run(&mut self.a, &mut self.b, &mut self.c, thread_info)
+    pub unsafe fn force(&mut self, thread_info: &ThreadInfo<T>) -> &mut Ct {
+        self.subalgorithm.run(&mut self.a, &mut self.b, &mut self.c, thread_info);
+        &mut self.c
     }
 
     pub fn get_a_scalar(&self) -> T {
@@ -51,8 +52,8 @@ impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>,
 
 }
 
-impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>,
-     Sc: GemmNode<T, At, Bt, Ct>> Mat<T> for Subcomputation<T, At, Bt, Ct, Sc>
+impl<'a, T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>,
+     Sc: GemmNode<T, At, Bt, Ct>> Mat<T> for Subcomputation<'a, T, At, Bt, Ct, Sc>
     where Sc: Send {
     // These set outputs of C
     #[inline(always)]

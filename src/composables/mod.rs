@@ -7,6 +7,7 @@ mod barrier;
 mod triple_loop;
 mod unpack;
 mod fused_pack;
+mod force;
 
 //pub use self::gemm::{GemmNode,AlgorithmStep};
 pub use self::part::{PartM,PartN,PartK,FirstDiffPartM,FirstDiffPartN,FirstDiffPartK};
@@ -17,6 +18,7 @@ pub use self::barrier::{Barrier};
 pub use self::triple_loop::{TripleLoop};
 pub use self::unpack::{UnpackC};
 pub use self::fused_pack::{DelayedPackA,DelayedPackB,UnpairA,UnpairB,UnpairC};
+pub use self::force::{ForceA,ForceB};
 
 use matrix::{Scalar,Mat};
 use thread_comm::ThreadInfo;

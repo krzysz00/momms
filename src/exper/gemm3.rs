@@ -68,30 +68,58 @@ fn flush_cache(arr: &mut Vec<f64> ) {
 }
 
 fn test_gemm3() {
-    use typenum::{UInt, B0};
-    type NC = UInt<UInt<typenum::U1020, B0>, B0>;
-    type KC = typenum::U256;
-    type MC = typenum::U72;
-    type NR = typenum::U8;
-    type MR = typenum::U6;
+    use typenum::{UInt, UTerm, B0, Unsigned};
+    type U3000 = UInt<UInt<typenum::U750, B0>, B0>;
+    type Nc = U3000;
+    type Kc = typenum::U192;
+    type Mc = typenum::U120;
+    type Mr = typenum::U4;
+    type Nr = typenum::U12;
 
-    type Goto<T: Scalar, MTA: Mat<T>, MTB: Mat<T>, MTC: Mat<T>>
-        = PartN<T, MTA, MTB, MTC, NC,
-          PartK<T, MTA, MTB, MTC, KC,
-          PackB<T, MTA, MTB, MTC, ColumnPanelMatrix<T,NR>,
-          PartM<T, MTA, ColumnPanelMatrix<T,NR>, MTC, MC,
-          PackA<T, MTA, ColumnPanelMatrix<T,NR>, MTC, RowPanelMatrix<T,MR>,
-          KernelNM<T, RowPanelMatrix<T,MR>, ColumnPanelMatrix<T,NR>, MTC, NR, MR>>>>>>;
+    type Goto<T: Scalar, MTA: Mat<T>, MTB: Mat<T>, MTC: Mat<T>> =
+          PartN<T, MTA, MTB, MTC, Nc,
+          PartK<T, MTA, MTB, MTC, Kc,
+          PackB<T, MTA, MTB, MTC, ColumnPanelMatrix<T, Nr>,
+          PartM<T, MTA, ColumnPanelMatrix<T,Nr>, MTC, Mc,
+          PackA<T, MTA, ColumnPanelMatrix<T,Nr>, MTC, RowPanelMatrix<T,Mr>,
+          KernelNM<T, RowPanelMatrix<T,Mr>, ColumnPanelMatrix<T,Nr>, MTC, Nr, Mr>>>>>>;
 
-    type GotoPlain = Goto<f64, Matrix<f64>, Matrix<f64>, Matrix<f64>>;
-
+    type GotoPrime = Goto<f64, Matrix<f64>, Matrix<f64>, Matrix<f64>>;
     type GotoChainedSub = Subcomputation<f64, Matrix<f64>, Matrix<f64>, Matrix<f64>>;
     type GotoChained = ForceB<f64, Matrix<f64>,
                               Matrix<f64>, Matrix<f64>, Matrix<f64>,
-                              Matrix<f64>, GotoPlain, GotoPlain>;
+                              Matrix<f64>, GotoPrime, GotoPrime>;
 
-    let mut chained: GotoChained = GotoChained::new();
-    let mut stock: GotoPlain = GotoPlain::new();
+
+    type RootS3 = typenum::U768;
+    type McL2 = typenum::U120;
+    type ColPM<T: Scalar> = ColumnPanelMatrix<T, Nr>;
+    type RowPM<T: Scalar> = RowPanelMatrix<T, Mr>;
+
+    type L3CNc = typenum::U624;
+    type L3CKc = typenum::U156;
+    //Resident C algorithm, inner loops
+    type L3Ci<T: Scalar, MTA: Mat<T>, MTB: Mat<T>, MTC: Mat<T>> =
+          PartK<T, MTA, MTB, MTC, L3CKc,
+          PackB<T, MTA, MTB, MTC, ColPM<T>,
+          PartM<T, MTA, ColPM<T>, MTC, L3CKc,
+          PackA<T, MTA, ColPM<T>, MTC, RowPM<T>,
+          KernelNM<T, RowPM<T>, ColPM<T>, MTC, Nr, Mr>>>>>;
+
+    type L3CiSub<T> = Subcomputation<T, Matrix<T>, Matrix<T>, ColPM<T>>;
+
+    type L3Bo<T: Scalar, MTA: Mat<T>, MTAi: Mat<T>, MTBi: Mat<T>, MTC: Mat<T>>
+        = PartN<T, MTA, Subcomputation<T, MTAi, MTBi, ColPM<T>>, MTC, L3CNc,
+          PartK<T, MTA, Subcomputation<T, MTAi, MTBi, ColPM<T>>, MTC, L3CNc, // Also the Mc of that algorithm, and outer k -> inner m
+          ForceB<T, MTA, MTAi, MTBi, ColPM<T>, MTC,
+                 L3Ci<T, MTAi, MTBi, ColPM<T>>,
+          PartM<T, MTA, ColPM<T>, MTC, McL2,
+          PartK<T, MTA, ColPM<T>, MTC, Kc,
+          PackA<T, MTA, ColPM<T>, MTC, RowPM<T>,
+          KernelNM<T, RowPM<T>, ColPM<T>, MTC, Nr, Mr>>>>>>>;
+
+    let mut chained = <L3Bo<f64, Matrix<f64>, Matrix<f64>, Matrix<f64>, Matrix<f64>>>::new();
+    let mut goto: GotoChained = GotoChained::new();
 
     let flusher_len = 32*1024*1024; //256MB
     let mut flusher: Vec<f64> = Vec::with_capacity(flusher_len);
@@ -113,13 +141,12 @@ fn test_gemm3() {
             let mut c: Matrix<f64> = Matrix::new(l, n);
             let mut d: Matrix<f64> = Matrix::new_row_major(m, n);
             a.fill_rand(); b.fill_rand(); c.fill_rand(); d.fill_zero();
-            let mut tmp: Matrix<f64> = Matrix::new_row_major(k, n);
-
+            let tmp: ColPM<f64> = ColumnPanelMatrix::new(L3CKc::to_usize(), L3CKc::to_usize());
+            let mut submat: L3CiSub<f64> = Subcomputation::new(b, c, tmp);
+            submat.set_scalar(0.0);
             flush_cache(&mut flusher);
 
-            let mut submat: GotoChainedSub = Subcomputation::new(b, c, tmp);
-            let mut start = Instant::now();
-            submat.set_scalar(0.0);
+            let start = Instant::now();
             unsafe {
                 chained.run(&mut a, &mut submat, &mut d, &ThreadInfo::single_thread());
             }
@@ -127,17 +154,17 @@ fn test_gemm3() {
             let err = test_d_eq_a_b_c(&mut a, &mut submat.a, &mut submat.b, &mut d);
             worst_err = worst_err.max(err);
 
+            let tmp: Matrix<f64> = Matrix::new_row_major(k, n);
+            let mut submat: GotoChainedSub = submat.set_c(tmp); // drops old tmp
+            submat.set_scalar(0.0);
             flush_cache(&mut flusher);
 
-            let mut tmp: Matrix<f64> = Matrix::new_row_major(k, n);
-            tmp.set_scalar(0.0);
-            let mut start = Instant::now();
+            let start = Instant::now();
             unsafe {
-                stock.run(&mut submat.a, &mut submat.b, &mut tmp, &ThreadInfo::single_thread());
-                stock.run(&mut a, &mut tmp, &mut d, &ThreadInfo::single_thread());
+                goto.run(&mut a, &mut submat, &mut d, &ThreadInfo::single_thread());
             }
             best_time_stock = best_time_stock.min(util::dur_seconds(start));
-            ::std::mem::drop(tmp);
+            ::std::mem::drop(submat);
         }
         println!("{}\t{}\t{}\t{}\t{}\t{}\t{:e}",
                  m, n, k, l,

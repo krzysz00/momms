@@ -32,7 +32,10 @@ impl<T: Scalar, AiT: Mat<T>, BiT: Mat<T>, CiT: Mat<T>,
     #[inline(always)]
     unsafe fn run(&mut self, a: &mut Subcomputation<T, AiT, BiT, CiT>,
                   b: &mut Bt, c: &mut Ct, thr: &ThreadInfo<T>) -> () {
+        let beta_save = a.c.get_scalar();
+        a.c.set_scalar(T::zero());
         self.subalgorithm.run(&mut a.a, &mut a.b, &mut a.c, thr);
+        a.c.set_scalar(beta_save);
         let new_a = &mut a.c;
         self.child.run(new_a, b, c, thr);
     }
@@ -81,7 +84,10 @@ impl<T: Scalar, At: Mat<T>,
     unsafe fn run(&mut self, a: &mut At,
                   b: &mut Subcomputation<T, AiT, BiT, CiT>,
                   c: &mut Ct, thr: &ThreadInfo<T>) -> () {
+        let beta_save = b.c.get_scalar();
+        b.c.set_scalar(T::zero());
         self.subalgorithm.run(&mut b.a, &mut b.b, &mut b.c, thr);
+        b.c.set_scalar(beta_save);
         let new_b = &mut b.c;
         self.child.run(a, new_b, c, thr);
     }

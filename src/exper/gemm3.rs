@@ -94,7 +94,7 @@ fn test_gemm3() {
                               Matrix<f64>, GotoPrime, GotoPrime>;
 
 
-    type RootS3 = typenum::U768;
+    // type RootS3 = typenum::U768;
     type McL2 = typenum::U120;
     type ColPM<T: Scalar> = ColumnPanelMatrix<T, Nr>;
     type RowPM<T: Scalar> = RowPanelMatrix<T, Mr>;
@@ -112,17 +112,14 @@ fn test_gemm3() {
     type L3CiSub<T> = Subcomputation<T, Matrix<T>, Matrix<T>, ColPM<T>>;
 
     type L3Bo<T: Scalar, MTA: Mat<T>, MTAi: Mat<T>, MTBi: Mat<T>, MTC: Mat<T>>
-        = PartN<T, MTA, Subcomputation<T, MTAi, MTBi, Matrix<T>>, MTC, L3CNc,
-          PartK<T, MTA, Subcomputation<T, MTAi, MTBi, Matrix<T>>, MTC, L3CNc, // Also the Mc of that algorithm, and outer k -> inner m
-          ForceB<T, MTA, MTAi, MTBi, Matrix<T>, MTC,
-                    L3Ci<T, MTAi, MTBi, Matrix<T>>,
-          PackB<T, MTA, Matrix<T>, MTC, ColPM<T>,
-          // ForceB<T, MTA, MTAi, MTBi, ColPM<T>, MTC,
-          //        L3Ci<T, MTAi, MTBi, ColPM<T>>,
+        = PartN<T, MTA, Subcomputation<T, MTAi, MTBi, ColPM<T>>, MTC, L3CNc,
+          PartK<T, MTA, Subcomputation<T, MTAi, MTBi, ColPM<T>>, MTC, L3CNc, // Also the Mc of that algorithm, and outer k -> inner m
+          ForceB<T, MTA, MTAi, MTBi, ColPM<T>, MTC,
+                    L3Ci<T, MTAi, MTBi, ColPM<T>>,
           PartM<T, MTA, ColPM<T>, MTC, McL2,
           PartK<T, MTA, ColPM<T>, MTC, Kc,
           PackA<T, MTA, ColPM<T>, MTC, RowPM<T>,
-          KernelNM<T, RowPM<T>, ColPM<T>, MTC, Nr, Mr>>>>>>>>;
+          KernelNM<T, RowPM<T>, ColPM<T>, MTC, Nr, Mr>>>>>>>;
 
     let mut chained = <L3Bo<f64, Matrix<f64>, Matrix<f64>, Matrix<f64>, Matrix<f64>>>::new();
     let mut goto: GotoChained = GotoChained::new();
@@ -147,12 +144,9 @@ fn test_gemm3() {
             let mut c: Matrix<f64> = Matrix::new(l, n);
             let mut d: Matrix<f64> = Matrix::new_row_major(m, n);
             a.fill_rand(); b.fill_rand(); c.fill_rand(); d.fill_zero();
-            let mut tmp: Matrix<f64> = Matrix::new_row_major(min(k, L3CNc::to_usize()), min(n, L3CNc::to_usize()));
-//            let mut tmp: ColPM<f64> = ColumnPanelMatrix::new(L3CNc::to_usize(), L3CNc::to_usize());
+            let mut tmp: ColPM<f64> = ColumnPanelMatrix::new(min(k, L3CNc::to_usize()), min(n, L3CNc::to_usize()));
             tmp.fill_zero();
-            let mut submat = Subcomputation::new(b, c, tmp);
-//            let mut submat: L3CiSub<f64> = Subcomputation::new(b, c, tmp);
-            submat.set_scalar(0.0);
+            let mut submat: L3CiSub<f64> = Subcomputation::new(b, c, tmp);
             flush_cache(&mut flusher);
 
             let start = Instant::now();

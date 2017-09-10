@@ -176,7 +176,7 @@ fn test_gemm3() {
                  worst_err.sqrt());
     }
     let sum: f64 = flusher.iter().sum();
-    println!("Flush value {}", sum);
+    println!("# Flush value {}", sum);
 }
 fn main() {
     test_gemm3();

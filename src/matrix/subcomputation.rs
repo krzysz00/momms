@@ -65,19 +65,19 @@ impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>>
 
     #[inline(always)]
     fn iter_height(&self) -> usize {
-        self.b.iter_height()
+        self.a.iter_height()
     }
     #[inline(always)]
     fn iter_width(&self) -> usize {
-        self.a.iter_width()
+        self.b.iter_width()
     }
     #[inline(always)]
     fn logical_h_padding(&self) -> usize {
-        self.b.logical_h_padding()
+        self.a.logical_h_padding()
     }
     #[inline(always)]
     fn logical_w_padding(&self) -> usize {
-        self.a.logical_w_padding()
+        self.b.logical_w_padding()
     }
 
     #[inline(always)]
@@ -139,7 +139,7 @@ impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>>
     }
 
     #[inline(always)]
-    unsafe fn send_alias(&mut self, thr: &ThreadInfo<T>) {
+    unsafe fn send_alias(&mut self, _thr: &ThreadInfo<T>) {
         panic!("More what do")
     }
 }

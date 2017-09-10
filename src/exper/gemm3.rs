@@ -144,7 +144,7 @@ fn test_gemm3() {
             let mut c: Matrix<f64> = Matrix::new(l, n);
             let mut d: Matrix<f64> = Matrix::new_row_major(m, n);
             a.fill_rand(); b.fill_rand(); c.fill_rand(); d.fill_zero();
-            let mut tmp: ColPM<f64> = ColumnPanelMatrix::new(min(k, L3CNc::to_usize()), min(n, L3CNc::to_usize()));
+            let mut tmp: ColPM<f64> = ColumnPanelMatrix::new(L3CNc::to_usize(), L3CNc::to_usize());
             tmp.fill_zero();
             let mut submat: L3CiSub<f64> = Subcomputation::new(b, c, tmp);
             flush_cache(&mut flusher);

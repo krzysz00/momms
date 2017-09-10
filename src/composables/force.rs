@@ -30,11 +30,10 @@ impl<T: Scalar> MetadataOnlyMatrix<T> {
 }
 
 impl<T: Scalar> Mat<T> for MetadataOnlyMatrix<T> {
-    // These set outputs of C
     #[inline(always)]
-    fn get(&self, _y: usize, _x: usize) -> T { unimplemented!(); }
+    fn get(&self, _y: usize, _x: usize) -> T { T::zero() }
     #[inline(always)]
-    fn set(&mut self, _y: usize, _x: usize, _alpha: T) { unimplemented!(); }
+    fn set(&mut self, _y: usize, _x: usize, _alpha: T) { }
 
     #[inline(always)]
     fn iter_height(&self) -> usize {
@@ -62,23 +61,23 @@ impl<T: Scalar> Mat<T> for MetadataOnlyMatrix<T> {
     }
 
     #[inline(always)]
-    fn set_scalar(&mut self, _alpha: T) { unimplemented!(); }
+    fn set_scalar(&mut self, _alpha: T) { }
     #[inline(always)]
-    fn get_scalar(&self) -> T { unimplemented!(); }
-    fn push_y_split(&mut self, _start: usize, _end: usize) { unimplemented!(); }
-    fn push_x_split(&mut self, _start: usize, _end: usize) { unimplemented!(); }
+    fn get_scalar(&self) -> T { T::zero() }
+    fn push_y_split(&mut self, _start: usize, _end: usize) { }
+    fn push_x_split(&mut self, _start: usize, _end: usize) { }
     #[inline(always)]
-    fn pop_y_split(&mut self) { unimplemented!(); }
+    fn pop_y_split(&mut self) { }
     #[inline(always)]
-    fn pop_x_split(&mut self) { unimplemented!(); }
-    fn push_y_view(&mut self, _blksz: usize) -> usize { unimplemented!(); }
-    fn push_x_view(&mut self, _blksz: usize) -> usize { unimplemented!(); }
+    fn pop_x_split(&mut self) { }
+    fn push_y_view(&mut self, _blksz: usize) -> usize { 0 }
+    fn push_x_view(&mut self, _blksz: usize) -> usize { 0 }
     #[inline(always)]
-    fn pop_y_view(&mut self) { unimplemented!(); }
+    fn pop_y_view(&mut self) { }
     #[inline(always)]
-    fn pop_x_view(&mut self) { unimplemented!(); }
-    fn slide_y_view_to(&mut self, _y: usize, _blksz: usize) { unimplemented!(); }
-    fn slide_x_view_to(&mut self, _x: usize, _blksz: usize) { unimplemented!(); }
+    fn pop_x_view(&mut self) { }
+    fn slide_y_view_to(&mut self, _y: usize, _blksz: usize) { }
+    fn slide_x_view_to(&mut self, _x: usize, _blksz: usize) {}
     #[inline(always)]
     unsafe fn make_alias(&self) -> Self { unimplemented!(); }
     #[inline(always)]

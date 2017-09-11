@@ -1,0 +1,9 @@
+Failing to directly output packed tanks performance once k * n > L3CNc ^ 2
+Actually, failing to actually limit the buffer size tanks performance on > L3CNc, as does failure to do virtual resizes for the tails of a computation
+Still, having tails makes things less good
+
+Bug-wise, it helps to not confuse height and width
+
+3.7% improvement on average on big matrices
+
+chaining abstraction introduces about 0.1% overhead over calling gemm() twice on sufficiently large inputs, more overhead on smaller ones

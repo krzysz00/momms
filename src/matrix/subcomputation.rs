@@ -1,8 +1,5 @@
 use thread_comm::ThreadInfo;
 use matrix::{Scalar,Mat};
-use super::view::{MatrixView};
-use composables::{GemmNode};
-use std;
 use std::marker::PhantomData;
 
 // Assumes that, when force() is called, A is m by k, B is k by n, and C is m by n

@@ -81,7 +81,7 @@ impl<T: Scalar> Mat<T> for MetadataOnlyMatrix<T> {
     #[inline(always)]
     unsafe fn make_alias(&self) -> Self { unimplemented!(); }
     #[inline(always)]
-    unsafe fn send_alias(&mut self, thr: &ThreadInfo<T>) { unimplemented!(); }
+    unsafe fn send_alias(&mut self, _thr: &ThreadInfo<T>) { unimplemented!(); }
 }
 
 pub struct ForceA<T: Scalar, AiT: Mat<T>, BiT: Mat<T>, CiT: Mat<T>,

@@ -5,7 +5,6 @@ extern crate hwloc;
 extern crate libc;
 
 use std::time::{Instant};
-use typenum::{U1};
 
 pub use momms::matrix::{Scalar, Mat, ColumnPanelMatrix, RowPanelMatrix, Matrix,
                         Subcomputation};
@@ -14,8 +13,6 @@ pub use momms::composables::{GemmNode, AlgorithmStep, PartM, PartN, PartK, PackA
 pub use momms::kern::{Ukernel, KernelNM};
 pub use momms::util;
 pub use momms::thread_comm::ThreadInfo;
-
-use std::cmp::min;
 
 fn test_d_eq_a_b_c<T:Scalar, At: Mat<T>, Bt: Mat<T>,
                    Ct: Mat<T>, Dt: Mat<T>>(a: &mut At, b: &mut Bt, c: &mut Ct, d: &mut Dt) -> T {
@@ -71,7 +68,7 @@ fn flush_cache(arr: &mut Vec<f64> ) {
 }
 
 fn test_gemm3() {
-    use typenum::{UInt, UTerm, B0, Unsigned};
+    use typenum::{UInt, B0, Unsigned};
     type U3000 = UInt<UInt<typenum::U750, B0>, B0>;
     type Nc = U3000;
     type Kc = typenum::U192;
@@ -79,7 +76,7 @@ fn test_gemm3() {
     type Mr = typenum::U4;
     type Nr = typenum::U12;
 
-    type Goto<T: Scalar, MTA: Mat<T>, MTB: Mat<T>, MTC: Mat<T>> =
+    type Goto<T, MTA, MTB, MTC> =
           PartN<T, MTA, MTB, MTC, Nc,
           PartK<T, MTA, MTB, MTC, Kc,
           PackB<T, MTA, MTB, MTC, ColumnPanelMatrix<T, Nr>,
@@ -96,13 +93,13 @@ fn test_gemm3() {
 
     // type RootS3 = typenum::U768;
     type McL2 = typenum::U120;
-    type ColPM<T: Scalar> = ColumnPanelMatrix<T, Nr>;
-    type RowPM<T: Scalar> = RowPanelMatrix<T, Mr>;
+    type ColPM<T> = ColumnPanelMatrix<T, Nr>;
+    type RowPM<T> = RowPanelMatrix<T, Mr>;
 
     type L3CNc = typenum::U624;
     type L3CKc = typenum::U156;
     //Resident C algorithm, inner loops
-    type L3Ci<T: Scalar, MTA: Mat<T>, MTB: Mat<T>, MTC: Mat<T>> =
+    type L3Ci<T, MTA, MTB, MTC> =
           PartK<T, MTA, MTB, MTC, L3CKc,
           PackB<T, MTA, MTB, MTC, ColPM<T>,
           PartM<T, MTA, ColPM<T>, MTC, L3CKc,
@@ -111,7 +108,7 @@ fn test_gemm3() {
 
     type L3CiSub<T> = Subcomputation<T, Matrix<T>, Matrix<T>, ColPM<T>>;
 
-    type L3Bo<T: Scalar, MTA: Mat<T>, MTAi: Mat<T>, MTBi: Mat<T>, MTC: Mat<T>>
+    type L3Bo<T, MTA, MTAi, MTBi, MTC>
         = PartN<T, MTA, Subcomputation<T, MTAi, MTBi, ColPM<T>>, MTC, L3CNc,
           PartK<T, MTA, Subcomputation<T, MTAi, MTBi, ColPM<T>>, MTC, L3CNc, // Also the Mc of that algorithm, and outer k -> inner m
           ForceB<T, MTA, MTAi, MTBi, ColPM<T>, MTC,

@@ -3,7 +3,7 @@ extern crate alloc;
 use thread_comm::ThreadInfo;
 use typenum::Unsigned;
 use self::alloc::heap::{Alloc,Heap};
-use matrix::{Scalar,Mat,ResizableBuffer,RoCM};
+use matrix::{Scalar,Mat,ResizableBuffer,RoCM,PanelTranspose,RowPanelMatrix};
 use super::view::{MatrixView};
 use util::capacity_to_aligned_layout;
 
@@ -352,4 +352,34 @@ impl<T: Scalar, PW: Unsigned> RoCM<T> for ColumnPanelMatrix<T, PW> {
 
     #[inline(always)]
     unsafe fn establish_leaf(&mut self, _y: usize, _x: usize, _height: usize, _width: usize) { }
+}
+
+impl<T: Scalar, PW: Unsigned>
+    PanelTranspose<T, ColumnPanelMatrix<T, PW>, RowPanelMatrix<T, PW>>
+    for ColumnPanelMatrix<T, PW>
+{
+    #[inline(always)]
+    unsafe fn new_from_parts(alpha: T, y_views: Vec<MatrixView>, x_views: Vec<MatrixView>,
+                             panel_stride: usize, buffer: *mut T, capacity: usize)
+                             -> ColumnPanelMatrix<T, PW> {
+        ColumnPanelMatrix{ alpha: alpha, y_views: y_views, x_views: x_views,
+                           panel_stride: panel_stride, buffer: buffer, capacity: capacity,
+                           is_alias: true, _pwt: PhantomData }
+    }
+
+    #[inline(always)]
+    fn transposing_clone(&self) -> RowPanelMatrix<T, PW> {
+        unsafe {
+            RowPanelMatrix::<T,PW>::new_from_parts(self.alpha, self.y_views.clone(),
+                                                   self.x_views.clone(), self.panel_stride,
+                                                   self.buffer, self.capacity)
+        }
+    }
+
+    fn reintegrate(&mut self, mut other: RowPanelMatrix<T, PW>) {
+        unsafe {
+            self.buffer = other.get_mut_buffer();
+        }
+        self.set_capacity( other.capacity())
+    }
 }

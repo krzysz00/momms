@@ -3,7 +3,7 @@ extern crate alloc;
 use thread_comm::ThreadInfo;
 use typenum::Unsigned;
 use self::alloc::heap::{Alloc,Heap};
-use matrix::{Scalar,Mat,ResizableBuffer,RoCM};
+use matrix::{Scalar,Mat,ResizableBuffer,RoCM,PanelTranspose,ColumnPanelMatrix};
 use super::view::{MatrixView};
 use util::capacity_to_aligned_layout;
 
@@ -25,6 +25,7 @@ pub struct RowPanelMatrix<T: Scalar, PH: Unsigned> {
 
     _pht: PhantomData<PH>,
 }
+
 impl<T: Scalar, PH: Unsigned> RowPanelMatrix<T,PH> {
     pub fn new(h: usize, w: usize) -> RowPanelMatrix<T,PH> {
         assert_ne!(mem::size_of::<T>(), 0, "Matrix can't handle ZSTs");
@@ -353,4 +354,34 @@ impl<T: Scalar, PH: Unsigned> RoCM<T> for RowPanelMatrix<T,PH> {
 
     #[inline(always)]
     unsafe fn establish_leaf(&mut self, _y: usize, _x: usize, _height: usize, _width: usize) { }
+}
+
+impl<T: Scalar, PH: Unsigned>
+    PanelTranspose<T, RowPanelMatrix<T, PH>, ColumnPanelMatrix<T, PH>>
+    for RowPanelMatrix<T, PH>
+{
+    #[inline(always)]
+    unsafe fn new_from_parts(alpha: T, y_views: Vec<MatrixView>, x_views: Vec<MatrixView>,
+                             panel_stride: usize, buffer: *mut T, capacity: usize)
+                             -> RowPanelMatrix<T, PH> {
+        RowPanelMatrix{ alpha: alpha, y_views: y_views, x_views: x_views,
+                        panel_stride: panel_stride, buffer: buffer, capacity: capacity,
+                        is_alias: true, _pht: PhantomData }
+    }
+
+    #[inline(always)]
+    fn transposing_clone(&self) -> ColumnPanelMatrix<T, PH> {
+        unsafe {
+            ColumnPanelMatrix::<T,PH>::new_from_parts(self.alpha, self.y_views.clone(),
+                                                       self.x_views.clone(), self.panel_stride,
+                                                       self.buffer, self.capacity)
+        }
+    }
+
+    fn reintegrate(&mut self, mut other: ColumnPanelMatrix<T, PH>) {
+        unsafe {
+            self.buffer = other.get_mut_buffer();
+        }
+        self.set_capacity(other.capacity())
+    }
 }

@@ -266,11 +266,11 @@ pub trait RoCM<T: Scalar> {
 }
 
 pub trait PanelTranspose<T: Scalar, M, Out>
-    where M: Mat<T> + ResizableBuffer<T> + PanelTranspose<T, M, Out>,
-          Out: Mat<T> + ResizableBuffer<T> + PanelTranspose<T, Out, M> {
+    where M: Mat<T> + RoCM<T> + ResizableBuffer<T> + PanelTranspose<T, M, Out>,
+          Out: Mat<T> + RoCM<T> + ResizableBuffer<T> + PanelTranspose<T, Out, M> {
     // Creates transpose
     unsafe fn new_from_parts(alpha: T, y_views: Vec<MatrixView>, x_views: Vec<MatrixView>,
-                             panel_stride: usize, buffer: *mut T, capacity: usize);
-    fn transposing_clone(&self);
+                             panel_stride: usize, buffer: *mut T, capacity: usize) -> M;
+    fn transposing_clone(&self) -> Out;
     fn reintegrate(&mut self, other: Out);
 }

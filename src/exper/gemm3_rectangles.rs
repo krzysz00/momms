@@ -51,11 +51,6 @@ fn test_d_eq_a_b_c<T:Scalar, At: Mat<T>, Bt: Mat<T>,
     dw.frosqr()
 }
 
-fn gflops_ab(m: usize, n: usize, k: usize, l: usize, seconds: f64) -> f64 {
-    let nflops = (m * k * l + m * l * n) as f64;
-    2.0 * nflops / seconds / 1E9
-}
-
 fn gflops_bc(m: usize, n: usize, k: usize, l: usize, seconds: f64) -> f64 {
     let nflops = (k * l * n + m * k * n) as f64;
     2.0 * nflops / seconds / 1E9
@@ -87,7 +82,7 @@ fn test_gemm3() {
     type GotoPrime = Goto<f64, Matrix<f64>, Matrix<f64>, Matrix<f64>>;
     type GotoChainedSub = Subcomputation<f64, Matrix<f64>, Matrix<f64>, Matrix<f64>>;
     type GotoChained = ForceB<f64, Matrix<f64>,
-                              Matrix<f64>, Matrix<f64>, Matrix<f64>,
+                              Matrix<f64>, Matrix<f64>, Matrix<f64>, GotoChainedSub,
                               Matrix<f64>, GotoPrime, GotoPrime>;
 
 
@@ -111,7 +106,8 @@ fn test_gemm3() {
     type L3Bo<T, MTA, MTAi, MTBi, MTC>
         = PartN<T, MTA, Subcomputation<T, MTAi, MTBi, ColPM<T>>, MTC, L3CNc,
           PartK<T, MTA, Subcomputation<T, MTAi, MTBi, ColPM<T>>, MTC, L3CNc, // Also the Mc of that algorithm, and outer k -> inner m
-          ForceB<T, MTA, MTAi, MTBi, ColPM<T>, MTC,
+          ForceB<T, MTA, MTAi, MTBi, ColPM<T>,
+                    Subcomputation<T, MTAi, MTBi, ColPM<T>>, MTC,
                     L3Ci<T, MTAi, MTBi, ColPM<T>>,
           PartM<T, MTA, ColPM<T>, MTC, McL2,
           PartK<T, MTA, ColPM<T>, MTC, Kc,
@@ -127,50 +123,60 @@ fn test_gemm3() {
         flusher.push(0.0);
     }
 
-    for index in 1..96 {
-        let mut best_time: f64 = 9999999999.0;
-        let mut best_time_stock: f64 = 9999999999.0;
-        let mut worst_err: f64 = 0.0;
-        let size = index * 16;
-        let (m, n, k, l) = (size, size, size, size);
+    const SMALL_DIM: usize = 9;
+    for to_lower in 1..5 {
+        println!("### Coordinate {} = {} runs", to_lower, SMALL_DIM);
+        for index in 1..96 {
+            let mut best_time: f64 = 9999999999.0;
+            let mut best_time_stock: f64 = 9999999999.0;
+            let mut worst_err: f64 = 0.0;
+            let size = index * 16;
+            let (m, n, k, l) = match to_lower {
+                1 => (SMALL_DIM, size, size, size),
+                2 => (size, SMALL_DIM, size, size),
+                3 => (size, size, SMALL_DIM, size),
+                4 => (size, size, size, SMALL_DIM),
+                _ => unreachable!()
+            };
 
-        let n_reps = 5;
-        for _ in 0..n_reps {
-            let mut a: Matrix<f64> = Matrix::new(m, k);
-            let mut b: Matrix<f64> = Matrix::new(k, l);
-            let mut c: Matrix<f64> = Matrix::new(l, n);
-            let mut d: Matrix<f64> = Matrix::new_row_major(m, n);
-            a.fill_rand(); b.fill_rand(); c.fill_rand(); d.fill_zero();
-            let mut tmp: ColPM<f64> = ColumnPanelMatrix::new(L3CNc::to_usize(), L3CNc::to_usize());
-            tmp.fill_zero();
-            let mut submat: L3CiSub<f64> = Subcomputation::new(b, c, tmp);
-            flush_cache(&mut flusher);
+            let n_reps = 5;
+            for _ in 0..n_reps {
+                let mut a: Matrix<f64> = Matrix::new(m, k);
+                let mut b: Matrix<f64> = Matrix::new(k, l);
+                let mut c: Matrix<f64> = Matrix::new(l, n);
+                let mut d: Matrix<f64> = Matrix::new_row_major(m, n);
+                a.fill_rand(); b.fill_rand(); c.fill_rand(); d.fill_zero();
+                let mut tmp: ColPM<f64> = ColumnPanelMatrix::new(L3CNc::to_usize(), L3CNc::to_usize());
+                tmp.fill_zero();
+                let mut submat: L3CiSub<f64> = Subcomputation::new(b, c, tmp);
+                flush_cache(&mut flusher);
 
-            let start = Instant::now();
-            unsafe {
-                chained.run(&mut a, &mut submat, &mut d, &ThreadInfo::single_thread());
+                let start = Instant::now();
+                unsafe {
+                    chained.run(&mut a, &mut submat, &mut d, &ThreadInfo::single_thread());
+                }
+                best_time = best_time.min(util::dur_seconds(start));
+                let err = test_d_eq_a_b_c(&mut a, &mut submat.a, &mut submat.b, &mut d);
+                worst_err = worst_err.max(err);
+
+                let tmp: Matrix<f64> = Matrix::new_row_major(k, n);
+                let mut submat: GotoChainedSub = submat.set_c(tmp); // drops old tmp
+                submat.set_scalar(0.0);
+                flush_cache(&mut flusher);
+
+                let start = Instant::now();
+                unsafe {
+                    goto.run(&mut a, &mut submat, &mut d, &ThreadInfo::single_thread());
+                }
+                best_time_stock = best_time_stock.min(util::dur_seconds(start));
+                ::std::mem::drop(submat);
             }
-            best_time = best_time.min(util::dur_seconds(start));
-            let err = test_d_eq_a_b_c(&mut a, &mut submat.a, &mut submat.b, &mut d);
-            worst_err = worst_err.max(err);
-
-            let tmp: Matrix<f64> = Matrix::new_row_major(k, n);
-            let mut submat: GotoChainedSub = submat.set_c(tmp); // drops old tmp
-            submat.set_scalar(0.0);
-            flush_cache(&mut flusher);
-
-            let start = Instant::now();
-            unsafe {
-                goto.run(&mut a, &mut submat, &mut d, &ThreadInfo::single_thread());
-            }
-            best_time_stock = best_time_stock.min(util::dur_seconds(start));
-            ::std::mem::drop(submat);
+            println!("{}\t{}\t{}\t{}\t{}\t{}\t{:e}",
+                     m, n, k, l,
+                     gflops_bc(m,n,k,l,best_time),
+                     gflops_bc(m,n,k,l,best_time_stock),
+                     worst_err.sqrt());
         }
-        println!("{}\t{}\t{}\t{}\t{}\t{}\t{:e}",
-                 m, n, k, l,
-                 gflops_bc(m,n,k,l,best_time),
-                 gflops_bc(m,n,k,l,best_time_stock),
-                 worst_err.sqrt());
     }
     let sum: f64 = flusher.iter().sum();
     println!("# Flush value {}", sum);

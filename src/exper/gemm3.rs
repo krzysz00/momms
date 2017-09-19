@@ -87,7 +87,7 @@ fn test_gemm3() {
     type GotoPrime = Goto<f64, Matrix<f64>, Matrix<f64>, Matrix<f64>>;
     type GotoChainedSub = Subcomputation<f64, Matrix<f64>, Matrix<f64>, Matrix<f64>>;
     type GotoChained = ForceB<f64, Matrix<f64>,
-                              Matrix<f64>, Matrix<f64>, Matrix<f64>,
+                              Matrix<f64>, Matrix<f64>, Matrix<f64>, GotoChainedSub,
                               Matrix<f64>, GotoPrime, GotoPrime>;
 
 
@@ -111,7 +111,7 @@ fn test_gemm3() {
     type L3Bo<T, MTA, MTAi, MTBi, MTC>
         = PartN<T, MTA, Subcomputation<T, MTAi, MTBi, ColPM<T>>, MTC, L3CNc,
           PartK<T, MTA, Subcomputation<T, MTAi, MTBi, ColPM<T>>, MTC, L3CNc, // Also the Mc of that algorithm, and outer k -> inner m
-          ForceB<T, MTA, MTAi, MTBi, ColPM<T>, MTC,
+          ForceB<T, MTA, MTAi, MTBi, ColPM<T>, Subcomputation<T, MTAi, MTBi, ColPM<T>>, MTC,
                     L3Ci<T, MTAi, MTBi, ColPM<T>>,
           PartM<T, MTA, ColPM<T>, MTC, McL2,
           PartK<T, MTA, ColPM<T>, MTC, Kc,

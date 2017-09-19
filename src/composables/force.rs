@@ -2,6 +2,7 @@ use matrix::{Scalar,Mat,Subcomputation,ResizableBuffer};
 use thread_comm::ThreadInfo;
 use composables::{GemmNode,AlgorithmStep};
 use std::marker::PhantomData;
+use std::convert::AsMut;
 
 // TODO: remove on non-lexical lifetimes?
 // Used to prevent rather understandable borrowcheck complaints on resizing
@@ -85,6 +86,7 @@ impl<T: Scalar> Mat<T> for MetadataOnlyMatrix<T> {
 }
 
 pub struct ForceA<T: Scalar, AiT: Mat<T>, BiT: Mat<T>, CiT: Mat<T>,
+                  At: AsMut<Subcomputation<T, AiT, BiT, CiT>>,
                   Bt: Mat<T>, Ct: Mat<T>,
                   Sc: GemmNode<T, AiT, BiT, CiT>,
                   S: GemmNode<T, CiT, Bt, Ct>> {
@@ -94,24 +96,30 @@ pub struct ForceA<T: Scalar, AiT: Mat<T>, BiT: Mat<T>, CiT: Mat<T>,
     _ait: PhantomData<AiT>,
     _bit: PhantomData<BiT>,
     _cit: PhantomData<CiT>,
+    _at: PhantomData<At>,
     _bt: PhantomData<Bt>,
     _ct: PhantomData<Ct>,
 }
 
-impl<T: Scalar, AiT: Mat<T>, BiT: Mat<T>, CiT: Mat<T>, Bt: Mat<T>, Ct: Mat<T>,
+impl<T: Scalar, AiT: Mat<T>, BiT: Mat<T>, CiT: Mat<T>,
+     At: AsMut<Subcomputation<T, AiT, BiT, CiT>>,
+     Bt: Mat<T>, Ct: Mat<T>,
      Sc: GemmNode<T, AiT, BiT, CiT>, S: GemmNode<T, CiT, Bt, Ct>>
-    ForceA<T, AiT, BiT, CiT, Bt, Ct, Sc, S> {
+    ForceA<T, AiT, BiT, CiT, At, Bt, Ct, Sc, S> {
 }
 
 impl<T: Scalar, AiT: Mat<T>, BiT: Mat<T>, CiT: Mat<T>,
+     At: AsMut<Subcomputation<T, AiT, BiT, CiT>>,
      Bt: Mat<T>, Ct: Mat<T>,
      Sc: GemmNode<T, AiT, BiT, CiT>,
      S: GemmNode<T, CiT, Bt, Ct>>
-    GemmNode<T, Subcomputation<T, AiT, BiT, CiT>, Bt, Ct>
-    for ForceA<T, AiT, BiT, CiT, Bt, Ct, Sc, S> {
+    GemmNode<T, At, Bt, Ct>
+    for ForceA<T, AiT, BiT, CiT, At, Bt, Ct, Sc, S>
+    where At: Mat<T> {
     #[inline(always)]
-    default unsafe fn run(&mut self, a: &mut Subcomputation<T, AiT, BiT, CiT>,
+    default unsafe fn run(&mut self, a: &mut At,
                           b: &mut Bt, c: &mut Ct, thr: &ThreadInfo<T>) -> () {
+        let a: &mut Subcomputation<T, AiT, BiT, CiT> = a.as_mut();
         let beta_save = a.c.get_scalar();
         a.c.set_scalar(T::zero());
         self.subalgorithm.run(&mut a.a, &mut a.b, &mut a.c, thr);
@@ -124,6 +132,7 @@ impl<T: Scalar, AiT: Mat<T>, BiT: Mat<T>, CiT: Mat<T>,
         ForceA {child: S::new(), subalgorithm: Sc::new(),
                 _t: PhantomData, _ait: PhantomData,
                 _bit: PhantomData, _cit: PhantomData,
+                _at: PhantomData,
                 _bt: PhantomData, _ct: PhantomData }
     }
 
@@ -133,18 +142,21 @@ impl<T: Scalar, AiT: Mat<T>, BiT: Mat<T>, CiT: Mat<T>,
 }
 
 impl<T: Scalar, AiT: Mat<T>, BiT: Mat<T>, CiT: Mat<T>,
+     At: AsMut<Subcomputation<T, AiT, BiT, CiT>>,
      Bt: Mat<T>, Ct: Mat<T>,
      Sc: GemmNode<T, AiT, BiT, CiT>,
      S: GemmNode<T, CiT, Bt, Ct>>
-    GemmNode<T, Subcomputation<T, AiT, BiT, CiT>, Bt, Ct>
-    for ForceA<T, AiT, BiT, CiT, Bt, Ct, Sc, S>
-    where CiT: ResizableBuffer<T> {
+    GemmNode<T, At, Bt, Ct>
+    for ForceA<T, AiT, BiT, CiT, At, Bt, Ct, Sc, S>
+    where CiT: ResizableBuffer<T>,
+          At: Mat<T> {
     #[inline(always)]
-    unsafe fn run(&mut self, a: &mut Subcomputation<T, AiT, BiT, CiT>,
+    unsafe fn run(&mut self, a: &mut At,
                   b: &mut Bt, c: &mut Ct, thr: &ThreadInfo<T>) -> () {
         let dummy_algo_desc: [AlgorithmStep; 0] = [];
         let y_marker = AlgorithmStep::K{bsz: 0};
         let x_marker = AlgorithmStep::N{bsz: 0};
+        let a: &mut Subcomputation<T, AiT, BiT, CiT> = a.as_mut();
         // Here, a has height from a.a and width from a.b
         let metadata = MetadataOnlyMatrix::new(a);
         let capacity_for_cit = CiT:: capacity_for(&metadata, y_marker, x_marker, &dummy_algo_desc);
@@ -176,6 +188,7 @@ impl<T: Scalar, AiT: Mat<T>, BiT: Mat<T>, CiT: Mat<T>,
 
 pub struct ForceB<T: Scalar, At: Mat<T>,
                   AiT: Mat<T>, BiT: Mat<T>, CiT: Mat<T>,
+                  Bt: AsMut<Subcomputation<T, AiT, BiT, CiT>>,
                   Ct: Mat<T>,
                   Sc: GemmNode<T, AiT, BiT, CiT>,
                   S: GemmNode<T, At, CiT, Ct>> {
@@ -186,26 +199,32 @@ pub struct ForceB<T: Scalar, At: Mat<T>,
     _ait: PhantomData<AiT>,
     _bit: PhantomData<BiT>,
     _cit: PhantomData<CiT>,
+    _bt: PhantomData<Bt>,
     _ct: PhantomData<Ct>,
 }
 
 impl<T: Scalar, At: Mat<T>,
-     AiT: Mat<T>, BiT: Mat<T>, CiT: Mat<T>, Ct: Mat<T>,
+     AiT: Mat<T>, BiT: Mat<T>, CiT: Mat<T>,
+     Bt: AsMut<Subcomputation<T, AiT, BiT, CiT>>,
+     Ct: Mat<T>,
      Sc: GemmNode<T, AiT, BiT, CiT>, S: GemmNode<T, At, CiT, Ct>>
-    ForceB<T, At, AiT, BiT, CiT, Ct, Sc, S> {
+    ForceB<T, At, AiT, BiT, CiT, Bt, Ct, Sc, S> {
 }
 
 impl<T: Scalar, At: Mat<T>,
      AiT: Mat<T>, BiT: Mat<T>, CiT: Mat<T>,
+     Bt: AsMut<Subcomputation<T, AiT, BiT, CiT>>,
      Ct: Mat<T>,
      Sc: GemmNode<T, AiT, BiT, CiT>,
      S: GemmNode<T, At, CiT, Ct>>
-    GemmNode<T, At, Subcomputation<T, AiT, BiT, CiT>, Ct>
-    for ForceB<T, At, AiT, BiT, CiT, Ct, Sc, S> {
+    GemmNode<T, At, Bt, Ct>
+    for ForceB<T, At, AiT, BiT, CiT, Bt, Ct, Sc, S>
+    where Bt: Mat<T> {
     #[inline(always)]
     default unsafe fn run(&mut self, a: &mut At,
-                  b: &mut Subcomputation<T, AiT, BiT, CiT>,
-                  c: &mut Ct, thr: &ThreadInfo<T>) -> () {
+                          b: &mut Bt,
+                          c: &mut Ct, thr: &ThreadInfo<T>) -> () {
+        let b: &mut Subcomputation<T, AiT, BiT, CiT> = b.as_mut();
         let beta_save = b.c.get_scalar();
         b.c.set_scalar(T::zero());
         self.subalgorithm.run(&mut b.a, &mut b.b, &mut b.c, thr);
@@ -218,7 +237,7 @@ impl<T: Scalar, At: Mat<T>,
         ForceB {child: S::new(), subalgorithm: Sc::new(),
                 _t: PhantomData, _ait: PhantomData,
                 _bit: PhantomData, _cit: PhantomData,
-                _at: PhantomData, _ct: PhantomData }
+                _at: PhantomData, _bt: PhantomData, _ct: PhantomData }
     }
 
     fn hierarchy_description() -> Vec<AlgorithmStep> {
@@ -228,16 +247,19 @@ impl<T: Scalar, At: Mat<T>,
 
 impl<T: Scalar, At: Mat<T>,
      AiT: Mat<T>, BiT: Mat<T>, CiT: Mat<T>,
+     Bt: AsMut<Subcomputation<T, AiT, BiT, CiT>>,
      Ct: Mat<T>,
      Sc: GemmNode<T, AiT, BiT, CiT>,
      S: GemmNode<T, At, CiT, Ct>>
-    GemmNode<T, At, Subcomputation<T, AiT, BiT, CiT>, Ct>
-    for ForceB<T, At, AiT, BiT, CiT, Ct, Sc, S>
-    where CiT: ResizableBuffer<T> {
+    GemmNode<T, At, Bt, Ct>
+    for ForceB<T, At, AiT, BiT, CiT, Bt, Ct, Sc, S>
+    where CiT: ResizableBuffer<T>,
+          Bt: Mat<T> {
     #[inline(always)]
     unsafe fn run(&mut self, a: &mut At,
-                  b: &mut Subcomputation<T, AiT, BiT, CiT>,
+                  b: &mut Bt,
                   c: &mut Ct, thr: &ThreadInfo<T>) -> () {
+        let b: &mut Subcomputation<T, AiT, BiT, CiT> = b.as_mut();
         let dummy_algo_desc: [AlgorithmStep; 0] = [];
         let y_marker = AlgorithmStep::K{bsz: 0};
         let x_marker = AlgorithmStep::N{bsz: 0};

@@ -4,6 +4,7 @@ use core::fmt::Display;
 use core::ops::{Add, Mul, Sub, Div, AddAssign, MulAssign, SubAssign, DivAssign};
 use thread_comm::ThreadInfo;
 use composables::AlgorithmStep;
+use matrix::view::MatrixView;
 
 //Trait Definitions
 pub trait ScalarConstants {
@@ -262,4 +263,14 @@ pub trait RoCM<T: Scalar> {
     fn get_block_cs(&self, lvl: usize, blksz: usize) -> usize;
     fn full_leaves() -> bool;
     unsafe fn establish_leaf(&mut self, y: usize, x:usize, height: usize, width: usize);
+}
+
+pub trait PanelTranspose<T: Scalar, M, Out>
+    where M: Mat<T> + ResizableBuffer<T> + PanelTranspose<T, M, Out>,
+          Out: Mat<T> + ResizableBuffer<T> + PanelTranspose<T, Out, M> {
+    // Creates transpose
+    unsafe fn new_from_parts(alpha: T, y_views: Vec<MatrixView>, x_views: Vec<MatrixView>,
+                             panel_stride: usize, buffer: *mut T, capacity: usize);
+    fn transposing_clone(&self);
+    fn reintegrate(&mut self, other: Out);
 }

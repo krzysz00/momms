@@ -156,9 +156,9 @@ impl<T: Scalar, AiT: Mat<T>, BiT: Mat<T>, CiT: Mat<T>,
         let dummy_algo_desc: [AlgorithmStep; 0] = [];
         let y_marker = AlgorithmStep::K{bsz: 0};
         let x_marker = AlgorithmStep::N{bsz: 0};
+        let metadata = MetadataOnlyMatrix::new(a);
         let a: &mut Subcomputation<T, AiT, BiT, CiT> = a.as_mut();
         // Here, a has height from a.a and width from a.b
-        let metadata = MetadataOnlyMatrix::new(a);
         let capacity_for_cit = CiT:: capacity_for(&metadata, y_marker, x_marker, &dummy_algo_desc);
 
         //Check if we need to resize packing buffer
@@ -259,12 +259,12 @@ impl<T: Scalar, At: Mat<T>,
     unsafe fn run(&mut self, a: &mut At,
                   b: &mut Bt,
                   c: &mut Ct, thr: &ThreadInfo<T>) -> () {
-        let b: &mut Subcomputation<T, AiT, BiT, CiT> = b.as_mut();
         let dummy_algo_desc: [AlgorithmStep; 0] = [];
         let y_marker = AlgorithmStep::K{bsz: 0};
         let x_marker = AlgorithmStep::N{bsz: 0};
-        // Here, b has height from b.a and width from b.b
         let metadata = MetadataOnlyMatrix::new(b);
+        let b: &mut Subcomputation<T, AiT, BiT, CiT> = b.as_mut();
+        // Here, b has height from b.a and width from b.b
         let capacity_for_cit = CiT:: capacity_for(&metadata, y_marker, x_marker, &dummy_algo_desc);
 
         //Check if we need to resize packing buffer

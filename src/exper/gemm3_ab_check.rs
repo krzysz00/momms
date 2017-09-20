@@ -147,7 +147,6 @@ fn test_gemm3() {
             b.transpose(); a.transpose();
             let mut submat: TransposingSubcomputation<f64, Matrix<f64>, Matrix<f64>, RowPMa<f64>>
                 = TransposingSubcomputation::new(b, a, tmp);
-            submat.set_scalar(0.0);
             flush_cache(&mut flusher);
 
             let start = Instant::now();
@@ -165,7 +164,6 @@ fn test_gemm3() {
             let mut a_lifted = submat.0.b;
             let mut submat2: L3CiSub<f64> = Subcomputation::new(submat.0.a, c, tmp);
             //let mut submat: L3CiSub<f64> = submat.inner_transpose().set_c(tmp);
-            submat2.set_scalar(0.0);
             flush_cache(&mut flusher);
 
             let start = Instant::now();

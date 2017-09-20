@@ -372,8 +372,8 @@ impl<T: Scalar, PH: Unsigned>
     #[inline(always)]
     fn transposing_clone(&self) -> ColumnPanelMatrix<T, PH> {
         unsafe {
-            ColumnPanelMatrix::<T,PH>::new_from_parts(self.alpha, self.y_views.clone(),
-                                                       self.x_views.clone(), self.panel_stride,
+            ColumnPanelMatrix::<T,PH>::new_from_parts(self.alpha, self.x_views.clone(),
+                                                       self.y_views.clone(), self.panel_stride,
                                                        self.buffer, self.capacity)
         }
     }

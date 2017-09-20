@@ -29,6 +29,10 @@ name = "exper_gemm3_rectangles"
 path = "src/exper/gemm3_rectangles.rs"
 
 [[bin]]
+name = "exper_gemm3_ab_check"
+path = "src/exper/gemm3_ab_check.rs"
+
+[[bin]]
 name = "exper_l3"
 path = "src/exper/l3.rs"
 

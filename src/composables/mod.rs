@@ -8,6 +8,7 @@ mod triple_loop;
 mod unpack;
 mod fused_pack;
 mod force;
+mod panel_transposing;
 
 //pub use self::gemm::{GemmNode,AlgorithmStep};
 pub use self::part::{PartM,PartN,PartK,FirstDiffPartM,FirstDiffPartN,FirstDiffPartK};
@@ -19,6 +20,7 @@ pub use self::triple_loop::{TripleLoop};
 pub use self::unpack::{UnpackC};
 pub use self::fused_pack::{DelayedPackA,DelayedPackB,UnpairA,UnpairB,UnpairC};
 pub use self::force::{ForceA,ForceB};
+pub use self::panel_transposing::{TransposingOutputPanel};
 
 use matrix::{Scalar,Mat};
 use thread_comm::ThreadInfo;

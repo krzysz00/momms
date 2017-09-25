@@ -33,6 +33,10 @@ name = "exper_gemm3_ab_check"
 path = "src/exper/gemm3_ab_check.rs"
 
 [[bin]]
+name = "exper_gemm4_right_assoc"
+path = "src/exper/gemm4_right_assoc.rs"
+
+[[bin]]
 name = "exper_l3"
 path = "src/exper/l3.rs"
 

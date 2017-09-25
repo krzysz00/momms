@@ -36,6 +36,15 @@ impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>> Subcomputation<T, At, Bt, Ct
         self.b.set_scalar(alpha)
     }
 
+    // drops old B
+    pub fn set_b<NewBt: Mat<T>>(self, new_b: NewBt) -> Subcomputation<T, At, NewBt, Ct> {
+        let old_b = self.b;
+        let ret = Subcomputation {a: self.a, b: new_b, c: self.c,
+                                  _t: PhantomData};
+        ::std::mem::drop(old_b);
+        ret
+    }
+
     // drops old C
     pub fn set_c<NewCt: Mat<T>>(self, new_c: NewCt) -> Subcomputation<T, At, Bt, NewCt> {
         let old_c = self.c;

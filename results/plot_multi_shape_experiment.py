@@ -7,9 +7,9 @@ if len(argv) < 3:
     print("{}: [data file] [algorithm name]", argv[0], file=stderr)
     exit(1)
 
-narrow_exper = pd.read_csv(argv[1], sep='\t', comment='#', float_precision="high", header=None, names=["m", "k", "l", "n", argv[2], "Goto", "error"])
-narrow_exper["Narrowed Dim."] = narrow_exper[["m", "k", "l", "n"]].idxmin(axis=1)
-narrow_exper["N"] = narrow_exper.apply(lambda row: row["k"] if row["Narrowed Dim."] == "m" else row["m"], axis=1)
+narrow_exper = pd.read_csv(argv[1], sep='\t', comment='#', float_precision="high", header=None, names=["m", "n", "k", "l", argv[2], "Goto", "error"])
+narrow_exper["Narrowed Dim."] = narrow_exper[["m", "n", "k", "l"]].idxmin(axis=1)
+narrow_exper["N"] = narrow_exper.apply(lambda row: row["n"] if row["Narrowed Dim."] == "m" else row["m"], axis=1)
 narrow_exper2 = narrow_exper.copy()
 narrow_exper2.set_index(["Narrowed Dim.", "N"], inplace=True)
 narrow_exper2.drop(["m", "n", "k", "l", "error"], axis=1, inplace=True)

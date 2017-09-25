@@ -127,11 +127,11 @@ fn test_gemm3() {
         flusher.push(0.0);
     }
 
-    for index in 1..96 {
+    for index in 1..513 {//96 {
         let mut best_time: f64 = 9999999999.0;
         let mut best_time_stock: f64 = 9999999999.0;
         let mut worst_err: f64 = 0.0;
-        let size = index * 16;
+        let size = index * 8;//16;
         let (m, n, k, l) = (size, size, size, size);
 
         let n_reps = 5;

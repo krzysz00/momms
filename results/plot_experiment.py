@@ -7,7 +7,7 @@ if len(argv) < 4:
     print("{}: [data file] [algorithm name] [plot title] [[xlabel]]", argv[0], file=stderr)
     exit(1)
 
-exper = pd.read_csv(argv[1], sep='\t', comment='#', float_precision="high", header=None, names=["m", "k", "l", "n", argv[2], "Goto", "error"])
+exper = pd.read_csv(argv[1], sep='\t', comment='#', float_precision="high", header=None, names=["m", "n", "k", "l", argv[2], "Goto", "error"])
 to_plot = exper[["m", argv[2], "Goto"]].copy()
 to_plot.set_index("m", inplace=True)
 ax = to_plot.plot(title=argv[3])

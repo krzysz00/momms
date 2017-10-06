@@ -29,8 +29,12 @@ name = "exper_gemm3_rectangles"
 path = "src/exper/gemm3_rectangles.rs"
 
 [[bin]]
-name = "exper_gemm3_ab_check"
-path = "src/exper/gemm3_ab_check.rs"
+name = "exper_gemm3_parallel"
+path = "src/exper/gemm3_parallel.rs"
+
+# [[bin]] # commented out since this algorithm sucked
+# name = "exper_gemm3_ab_check"
+# path = "src/exper/gemm3_ab_check.rs"
 
 [[bin]]
 name = "exper_gemm3_ab_bc_kernel"

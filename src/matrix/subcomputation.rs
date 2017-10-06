@@ -145,7 +145,12 @@ impl<T: Scalar, At: Mat<T>, Bt: Mat<T>, Ct: Mat<T>>
 
     #[inline(always)]
     unsafe fn make_alias(&self) -> Self {
-        panic!("What do")
+        Subcomputation {
+            a: self.a.make_alias(),
+            b: self.b.make_alias(),
+            c: self.c.make_alias(),
+            _t: PhantomData,
+        }
     }
 
     #[inline(always)]
@@ -267,7 +272,7 @@ impl<T: Scalar, Btt: Mat<T>, Att: Mat<T>, Ct: Mat<T>>
 
     #[inline(always)]
     unsafe fn make_alias(&self) -> Self {
-        panic!("What do")
+        TransposingSubcomputation(self.0.make_alias())
     }
 
     #[inline(always)]

@@ -169,7 +169,7 @@ impl<T: Scalar, AiT: Mat<T>, BiT: Mat<T>, CiT: Mat<T>,
             else {
                 a.c.set_capacity(capacity_for_cit);
             }
-            //self.b_pack.send_alias(thr);
+            a.c.send_alias(thr);
         }
 
         //Logically resize the output matrix
@@ -275,7 +275,7 @@ impl<T: Scalar, At: Mat<T>,
             else {
                 b.c.set_capacity(capacity_for_cit);
             }
-            //self.b_pack.send_alias(thr);
+            b.c.send_alias(thr);
         }
 
         //Logically resize the output matrix

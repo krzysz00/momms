@@ -5,7 +5,7 @@ from sys import argv, stderr, exit
 from memory_usage import memory_mine, memory_goto
 
 if len(argv) < 4:
-    print("{}: [data file] [algorithm name] [plot title] [[xlabel]]",
+    print("{}: [data file] [algorithm name] [plot title] [[xlabel]] [[file]]",
           argv[0], file=stderr)
     exit(1)
 
@@ -25,4 +25,7 @@ to_plot.set_index("m", inplace=True)
 ax = to_plot.plot(title=argv[3], xlim=(0, to_plot.index[-1]))
 ax.set_xlabel("N" if len(argv) == 4 else argv[4])
 ax.set_ylabel("Additional allocations (MiB)")
-plt.show()
+if len(argv) < 6:
+    plt.show()
+else:
+    plt.savefig(argv[5])

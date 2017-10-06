@@ -5,7 +5,7 @@ from sys import argv, stderr, exit
 from memory_usage import memory_mine, memory_goto
 
 if len(argv) < 4:
-    print("{}: [data file] [algorithm name] [plot title]".format(argv[0]), file=stderr)
+    print("{}: [data file] [algorithm name] [plot title] [[file]]".format(argv[0]), file=stderr)
     exit(1)
 
 narrow_exper = pd.read_csv(argv[1], sep='\t', comment='#',
@@ -42,4 +42,8 @@ for name, group in narrow_exper2.groupby(level="Narrowed Dim."):
     ax.set_xlabel("N (large dimensions)")
     ax.set_ylabel("Additional Allocations (MiB)")
     i = i + 1
-plt.show()
+
+if len(argv) < 5:
+    plt.show()
+else:
+    plt.savefig(argv[4])

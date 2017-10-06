@@ -4,7 +4,7 @@ import pandas as pd
 from sys import argv, stderr, exit
 
 if len(argv) < 4:
-    print("{}: [data file] [algorithm name] [plot title]".format(argv[0]),
+    print("{}: [data file] [algorithm name] [plot title] [[file]]".format(argv[0]),
           file=stderr)
     exit(1)
 
@@ -32,4 +32,8 @@ for name, group in narrow_exper2.groupby(level="Narrowed Dim."):
     ax.set_xlabel("N (large dimensions)")
     ax.set_ylabel("GFlops/s")
     i = i + 1
-plt.show()
+
+if len(argv) < 5:
+    plt.show()
+else:
+    plt.savefig(argv[4])

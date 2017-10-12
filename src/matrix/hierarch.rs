@@ -134,7 +134,7 @@ impl<T: Scalar, LH: Unsigned, LW: Unsigned, LRS: Unsigned, LCS: Unsigned> Hierar
 
       
         //Return
-        Hierarch{ alpha: T::one(),
+        Hierarch{ alpha: self.alpha,
                   y_views: y_views, x_views: x_views,
                   y_hierarchy: y_hierarchy, x_hierarchy: x_hierarchy,
                   yh_index: yh_index, xh_index: xh_index,  
@@ -367,7 +367,7 @@ impl<T: Scalar, LH: Unsigned, LW: Unsigned, LRS: Unsigned, LCS: Unsigned> Mat<T>
         let x_hierarchy = self.x_hierarchy.clone();
         let y_hierarchy = self.y_hierarchy.clone();
 
-        Hierarch{ alpha: T::one(),
+        Hierarch{ alpha: self.alpha,
                   y_views: y_views_alias, x_views: x_views_alias,
                   y_hierarchy: y_hierarchy, x_hierarchy: x_hierarchy,
                   yh_index: self.yh_index, xh_index: self.xh_index,  

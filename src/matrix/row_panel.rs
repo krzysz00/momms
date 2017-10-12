@@ -48,7 +48,7 @@ impl<T: Scalar, PH: Unsigned> RowPanelMatrix<T,PH> {
             Heap.alloc(layout).expect("Could not allocate buffer for matrix!")
         };
 
-        RowPanelMatrix{ alpha: T::one(),
+        RowPanelMatrix{ alpha: self.alpha,
                         y_views: y_views, x_views: x_views,
                         panel_stride: panel_h*w, 
                         buffer: buf as *mut _, capacity: capacity,
@@ -225,7 +225,7 @@ impl<T: Scalar, PH: Unsigned> Mat<T> for RowPanelMatrix<T, PH> {
         y_views_alias.push(MatrixView{ offset: y_view.offset, padding: y_view.offset, iter_size: y_view.iter_size });
         x_views_alias.push(MatrixView{ offset: x_view.offset, padding: x_view.offset, iter_size: x_view.iter_size });
 
-        RowPanelMatrix{ alpha: T::one(),
+        RowPanelMatrix{ alpha: self.alpha,
                         y_views: y_views_alias, x_views: x_views_alias,
                         panel_stride: self.panel_stride,
                         buffer: self.buffer, 

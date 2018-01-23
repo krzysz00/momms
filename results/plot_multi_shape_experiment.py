@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import pandas as pd
 from sys import argv, stderr, exit
@@ -10,7 +12,9 @@ if len(argv) < 4:
 
 narrow_exper = pd.read_csv(argv[1], sep='\t', comment='#',
                            float_precision="high", header=None,
-                           names=["m", "n", "k", "l", argv[2], "Goto", "error"])
+                           names=["m", "n", "k", "l",
+                                  argv[2], "MOMMS BLIS algo.",
+                                  "error"])
 narrow_exper["Narrowed Dim."] = narrow_exper[["m", "n", "k", "l"]].idxmin(axis=1)
 narrow_exper["N"] = narrow_exper.apply(lambda row:
                                        row["k"] if row["Narrowed Dim."] == "m"
@@ -28,7 +32,8 @@ for name, group in narrow_exper2.groupby(level="Narrowed Dim."):
     group2 = group.copy()
     group2.index = group2.index.droplevel()
     group2.plot(ax=ax, title="Narrow {}".format(name),
-                xlim=(0, group2.index[-1]), ylim=(0, 50))
+                xlim=(0, group2.index[-1]), ylim=(0, 50),
+                style='.')
     ax.set_xlabel("N (large dimensions)")
     ax.set_ylabel("GFlops/s")
     i = i + 1

@@ -126,7 +126,7 @@ fn test_gemm3() {
     const SMALL_DIM: usize = 9;
     for to_lower in 1..5 {
         println!("### Coordinate {} = {} runs", to_lower, SMALL_DIM);
-        for index in 1..513 {//96 {
+        for index in 2..513 {//96 {
             let mut best_time: f64 = 9999999999.0;
             let mut best_time_stock: f64 = 9999999999.0;
             let mut worst_err: f64 = 0.0;

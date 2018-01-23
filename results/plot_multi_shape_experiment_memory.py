@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import pandas as pd
 from sys import argv, stderr, exit
@@ -20,10 +22,10 @@ narrow_exper[argv[2]] = narrow_exper.apply(lambda r:
                                            memory_mine(r["m"], r["n"],
                                                        r["k"], r["l"]),
                                            axis=1)
-narrow_exper["Goto"] = narrow_exper.apply(lambda r:
-                                          memory_goto(r["m"], r["n"],
-                                                      r["k"], r["l"]),
-                                          axis=1)
+narrow_exper["MOMMS BLIS algo."] = narrow_exper.apply(lambda r:
+                                                      memory_goto(r["m"], r["n"],
+                                                                  r["k"], r["l"]),
+                                                      axis=1)
 
 narrow_exper2 = narrow_exper.copy()
 narrow_exper2.set_index(["Narrowed Dim.", "N"], inplace=True)

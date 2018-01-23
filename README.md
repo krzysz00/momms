@@ -11,15 +11,15 @@ How-to
 Get Rust Nightly:
 https://www.rustup.rs/
 
-Install BLIS to your home directory:
+Install BLIS to your home directory (or edit paths):
 https://github.com/flame/blis
 
 Get and install hwloc:
 https://www.open-mpi.org/projects/hwloc/
 
-To build MOMMS binaries in release using the blis kernel:
-cargo build --release --features "blis hsw"
-
+To run the experiments, run `make`.
+This will build the code and produce all results and plots.
+To save the results in a different subdirectory, run `make EXPERIMENT=[directory]`
 
 Funding
 -------

@@ -47,6 +47,10 @@ path = "src/exper/gemm3_ab_bc_kernel.rs"
 name = "exper_gemm4_right_assoc"
 path = "src/exper/gemm4_right_assoc.rs"
 
+# [[bin]] # Doesn't compile atm, and I need to write
+# name = "exper_framework_overhead"
+# path = "src/exper/framework_overhead.rs"
+
 [[bin]]
 name = "exper_l3"
 path = "src/exper/l3.rs"

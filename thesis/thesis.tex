@@ -1,0 +1,48 @@
+\documentclass[12pt]{article}
+
+\usepackage{mathtools,amsthm}
+\usepackage{fontspec}
+\usepackage{microtype}
+
+\usepackage[noend]{algpseudocode}
+\usepackage{algorithm}
+\newcommand*\Let[2]{\State #1 $\gets$ #2}
+% since gemm3 can't be a matro name
+\newcommand{\pluseq}{\mathrel{{+}{=}}}
+\newcommand{\gemmt}{{\texttt{gemm3()}}}
+\newcommand{\gemm}{{\texttt{gemm()}}}
+
+\title{gemm3(): Constant-workspace high-performance multiplication of three matrices}
+\author{Krzysztof A. Drewniak, Tyler M. Smith, Robert van de Gejin}
+
+\begin{document}
+\maketitle{}
+\section{Background}
+\subsection{High-Performance \gemm{}}
+Before discussing \gemmt{}, it is important to review the techniques for the operation $C \coloneqq \alpha AB + \beta C$, that is, \gemm{}.
+For simplicity, we'll present the operation as $C \pluseq AB$ for simplicity.
+A naive implementation would proceed as follows (where $A$ is $m$ by $k$, $B$ is $k$ by $n$, and $c$ is $m$ by $n$)
+\begin{algorithm}
+  \caption{Naive implementation of \gemm{}}
+  \begin{algorithmic}[1]
+    \Procedure{gemm}{$A, B, C$}
+    \For{$i \gets 0 \textrm{ up to } m$}
+    \For{$j \gets 0 \textrm{ up to } n$}
+    \For{$c \gets 0 \textrm{ up to } k$}
+    \Let{$C_{i, j}$}{$C_{i, j} + A_{i, c} B_{c, j}$}
+    \EndFor{}
+    \EndFor{}
+    \EndFor{}
+    \EndProcedure{}
+  \end{algorithmic}
+\end{algorithm}
+This algorithm has serious performance issues in that it accesses the memory of one of the operands ($A$ for row-major storage and $B$ for column-major) at a stride of $k$, which is almost always a number that makes it impossible for the processor to stream both matrices' values into memory through prefectching or to vectorize the memory accesses, which would allow multiple elements of $C$ to be computed simultaneously on the same CPU core.
+Therefore, it is effectively never used in practice except as a verification tool for more efficient algorithms.
+
+Many of the high-performance \gemm{} algorithms in use today are based on the approach of Goto\textbf{TODO cite}
+These algorithms massively improves performance by taking advantage of the multi-level cache present on modern CPU architectures.
+They operate by reducing the \gemm{} to a series of sub-problems that are sized such that their inputs and/or outputs fit into the levels of the system's cache, and additionally by rearranging the inputs to those subploblems into a form that can be streamed from cache by the \emph{microkernel}, a highly-optimized inner loop.
+
+One commonly-used algorithm of this type is the BLIS algorithm,
+
+\end{document}

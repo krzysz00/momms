@@ -17,6 +17,21 @@
 
 \begin{document}
 \maketitle{}
+\section{Introduction}
+High-performance matrix multiplication is an important primitive for high-performance computing.
+Significant research effort, both academic (\textbf{TODO cite a few}) and commercial has gone in to optimizing this operation.
+The typical interface for such multiplication is the function \gemm{} from the Basic Linear Algebra Subprograms (BLAS) specification, which computes $C \coloneqq \beta C + \alpha AB$ for matrices $A$, $B$, and $C$ and scalars $\alpha$ and $\beta$, optionally taking the transpose of one or both of the input operands.
+
+In several applications, such as \textbf{TODO, I think there's a chemistry thing Devin would know about} and \textbf{TODO another application}, operations of the form $D \coloneqq \beta D + \alpha ABC$ occur.
+To perform this (which we'll summarize as $D \pluseq ABC$) performantly using \gemm{}, the programmer must allocate a temporary buffer $T$ and perform $T = BC; D \pluseq AT$ (or $T = AB; D \pluseq TC$).
+This has two drawbacks: the first is that $T$ is often a rather large matrix, which would require significant amounts of memory to store.
+In addition, reading and writing $T$ incurs a performance cost associated with reading and writing main memory.
+
+To combat this issue, we have developed an algorithm for \gemmt{}, that is, the computation of $D \pluseq ABC$, that does not require the entire intermediate product to be stored at one time.
+This algorithm exploits the blocked structure of modern matrix multiplication algorithm to only compute a cache-sized block of $(BC)$ at a time, and uses a recent algorithm that meets a theoretical lower-bound on memory I/O when the output matrix is a square that fits in the highest level of cache.
+It has attained performance gains of 5--6\% (in GFlops/s) over a pair of \gemm{} calls.
+
+\textbf{TODO, more intro?}
 \section{Background}
 \subsection{High-Performance \gemm{}}
 Before discussing \gemmt{}, it is important to review the techniques for the operation $C \coloneqq \alpha AB + \beta C$, that is, \gemm{}.

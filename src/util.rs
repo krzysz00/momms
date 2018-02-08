@@ -56,6 +56,39 @@ pub fn blas_dgemm( a: &mut Matrix<f64>, b: &mut Matrix<f64>, c: &mut Matrix<f64>
     }
 }
 
+#[cfg(feature="blis")]
+pub fn blis_dgemm(a: &mut Matrix<f64>, b: &mut Matrix<f64>, c: &mut Matrix<f64>) {
+    use blis_types::{bli_dgemm,dim_t,inc_t,trans_t};
+    let m = c.height() as dim_t;
+    let n = c.width() as dim_t;
+    let k = a.width() as dim_t;
+
+    let rs_a = a.get_row_stride() as inc_t;
+    let cs_a = a.get_column_stride() as inc_t;
+    let rs_b = b.get_row_stride() as inc_t;
+    let cs_b = b.get_column_stride() as inc_t;
+    let rs_c = c.get_row_stride() as inc_t;
+    let cs_c = c.get_column_stride() as inc_t;
+
+    let mut alpha = a.get_scalar() * b.get_scalar();
+    let mut beta = c.get_scalar();
+
+    unsafe {
+        let ap = a.get_mut_buffer();
+        let bp = b.get_mut_buffer();
+        let cp = c.get_mut_buffer();
+
+        bli_dgemm(trans_t::BLIS_NO_TRANSPOSE, trans_t::BLIS_NO_TRANSPOSE,
+                  m, n, k,
+                  &mut alpha as *mut f64,
+                  ap as *mut f64, rs_a, cs_a,
+                  bp as *mut f64, rs_b, cs_b,
+                  &mut beta as *mut f64,
+                  cp as *mut f64, rs_c, cs_c,
+                  ::std::ptr::null_mut());
+    }
+}
+
 pub fn test_c_eq_a_b<T:Scalar, At:Mat<T>, Bt:Mat<T>, Ct:Mat<T>>( a: &mut At, b: &mut Bt, c: &mut Ct ) -> T {
     let mut ref_gemm: TripleLoop = TripleLoop{};
 
@@ -88,6 +121,43 @@ pub fn test_c_eq_a_b<T:Scalar, At:Mat<T>, Bt:Mat<T>, Ct:Mat<T>>( a: &mut At, b: 
     cw.frosqr()
 }
 
+pub fn test_d_eq_a_b_c<T:Scalar, At: Mat<T>, Bt: Mat<T>,
+                   Ct: Mat<T>, Dt: Mat<T>>(a: &mut At, b: &mut Bt, c: &mut Ct, d: &mut Dt) -> T {
+    let mut ref_gemm : TripleLoop = TripleLoop{};
+
+    let m = d.height();
+    let n = c.width();
+    let l = b.width();
+    let k = a.width();
+
+    let mut w: Matrix<T> = Matrix::new(n, 1);
+    let mut cw: Matrix<T> = Matrix::new(l, 1);
+    let mut bcw: Matrix<T> = Matrix::new(k, 1);
+    let mut abcw: Matrix<T> = Matrix::new(m, 1);
+    let mut dw: Matrix<T> = Matrix::new(m, 1);
+    w.fill_rand();
+    dw.fill_zero();
+    cw.fill_zero();
+    bcw.fill_zero();
+    abcw.fill_zero();
+
+    //Do cw = Cw, then, bcw = B * (Cw), then abcw = A * (B * (Cw))
+    unsafe {
+        ref_gemm.run(c, &mut w, &mut cw, &ThreadInfo::single_thread() );
+        ref_gemm.run(b, &mut cw, &mut bcw, &ThreadInfo::single_thread() );
+        ref_gemm.run(a, &mut bcw, &mut abcw, &ThreadInfo::single_thread() );
+    }
+
+    //Do dw = Dw
+    unsafe {
+        ref_gemm.run(d, &mut w, &mut dw, &ThreadInfo::single_thread() );
+    }
+
+    //Dw -= abcw
+    dw.axpy(T::zero() - T::one(), &abcw);
+    dw.frosqr()
+}
+
 pub fn dur_seconds(start: Instant) -> f64 {
     let dur = start.elapsed();
     let time_secs = dur.as_secs() as f64;
@@ -98,6 +168,22 @@ pub fn dur_seconds(start: Instant) -> f64 {
 pub fn gflops(m: usize, n: usize, k: usize, seconds: f64) -> f64 {
     let nflops = (m * n * k) as f64;
     2.0 * nflops / seconds / 1E9
+}
+
+pub fn gflops_ab(m: usize, n: usize, k: usize, l: usize, seconds: f64) -> f64 {
+    let nflops = (m * k * l + m * l * n) as f64;
+    2.0 * nflops / seconds / 1E9
+}
+
+pub fn gflops_bc(m: usize, n: usize, k: usize, l: usize, seconds: f64) -> f64 {
+    let nflops = (k * l * n + m * k * n) as f64;
+    2.0 * nflops / seconds / 1E9
+}
+
+pub fn flush_cache(arr: &mut Vec<f64> ) {
+    for i in (arr).iter_mut() {
+        *i += 1.0;
+    }
 }
 
 pub fn pin_to_core(core: usize) {

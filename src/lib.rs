@@ -16,6 +16,8 @@ extern crate core;
 extern crate typenum;
 extern crate libc;
 
+#[cfg(feature="blis")]
+pub mod blis_types;
 pub mod matrix;
 pub mod composables;
 pub mod thread_comm;

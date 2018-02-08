@@ -7,7 +7,7 @@ fn main() -> () {
         println!("cargo:rustc-link-search=native={}/blis/lib", std::env::home_dir().unwrap().to_str().unwrap() );
         println!("cargo:rustc-link-search=native=/usr/local/lib");
         println!("cargo:rustc-link-lib=static=blis");
-        
+
         //Needed when BLIS is compiled with GCC and OpenMP:
         println!("cargo:rustc-link-search=native=/usr/lib/gcc/x86_64-linux-gnu/5");
         println!("cargo:rustc-link-lib=dylib=gomp");
@@ -15,10 +15,10 @@ fn main() -> () {
         //Use bindgen to create bindings to BLIS's typedefs
         //This allows us to interface with the BLIS micro-kernel
 		let bindings = bindgen::Builder::default()
+            .trust_clang_mangling(false)
 			.header("blis_types_wrapper.h")
-            .clang_arg("-include")
-            .clang_arg("stddef.h")
             .clang_arg(format!("-I/{}/blis/include/blis", std::env::home_dir().unwrap().to_str().unwrap()))
+            .hide_type("FP_(ZERO|NAN|NORMAL|SUBNORMAL|INFINITE)")
 			.generate()
 			.expect("Unable to generate bindings");
 

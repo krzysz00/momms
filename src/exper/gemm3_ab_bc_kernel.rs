@@ -14,59 +14,6 @@ pub use momms::kern::{Ukernel, KernelNM};
 pub use momms::util;
 pub use momms::thread_comm::ThreadInfo;
 
-fn test_d_eq_a_b_c<T:Scalar, At: Mat<T>, Bt: Mat<T>,
-                   Ct: Mat<T>, Dt: Mat<T>>(a: &mut At, b: &mut Bt, c: &mut Ct, d: &mut Dt) -> T {
-    let mut ref_gemm : TripleLoop = TripleLoop{};
-
-    let m = d.height();
-    let n = c.width();
-    let l = b.width();
-    let k = a.width();
-
-    let mut w: Matrix<T> = Matrix::new(n, 1);
-    let mut cw: Matrix<T> = Matrix::new(l, 1);
-    let mut bcw: Matrix<T> = Matrix::new(k, 1);
-    let mut abcw: Matrix<T> = Matrix::new(m, 1);
-    let mut dw: Matrix<T> = Matrix::new(m, 1);
-    w.fill_rand();
-    dw.fill_zero();
-    cw.fill_zero();
-    bcw.fill_zero();
-    abcw.fill_zero();
-
-    //Do cw = Cw, then, bcw = B * (Cw), then abcw = A * (B * (Cw))
-    unsafe {
-        ref_gemm.run(c, &mut w, &mut cw, &ThreadInfo::single_thread() );
-        ref_gemm.run(b, &mut cw, &mut bcw, &ThreadInfo::single_thread() );
-        ref_gemm.run(a, &mut bcw, &mut abcw, &ThreadInfo::single_thread() );
-    }
-
-    //Do dw = Dw
-    unsafe {
-        ref_gemm.run(d, &mut w, &mut dw, &ThreadInfo::single_thread() );
-    }
-
-    //Dw -= abcw
-    dw.axpy(T::zero() - T::one(), &abcw);
-    dw.frosqr()
-}
-
-fn gflops_ab(m: usize, n: usize, k: usize, l: usize, seconds: f64) -> f64 {
-    let nflops = (m * k * l + m * l * n) as f64;
-    2.0 * nflops / seconds / 1E9
-}
-
-fn gflops_bc(m: usize, n: usize, k: usize, l: usize, seconds: f64) -> f64 {
-    let nflops = (k * l * n + m * k * n) as f64;
-    2.0 * nflops / seconds / 1E9
-}
-
-fn flush_cache(arr: &mut Vec<f64> ) {
-    for i in (arr).iter_mut() {
-        *i += 1.0;
-    }
-}
-
 fn test_gemm3() {
     use typenum::{UInt, B0, Unsigned};
     type U3000 = UInt<UInt<typenum::U750, B0>, B0>;
@@ -147,7 +94,7 @@ fn test_gemm3() {
             // All the transposing, since D += (AB)C \equiv D^T += C^T(B^T A^T)
             c.transpose(); b.transpose(); a.transpose(); d.transpose();
             let mut submat: L3CiSub<f64> = Subcomputation::new(b, a, tmp);
-            flush_cache(&mut flusher);
+            util::flush_cache(&mut flusher);
 
             let start = Instant::now();
             unsafe {
@@ -159,13 +106,13 @@ fn test_gemm3() {
             //let mut a = submat.b;
             //d.transpose(); c.transpose(); b.transpose(); a.transpose();
             // Here we recreate all the transposage
-            let err = test_d_eq_a_b_c(&mut c, &mut submat.a, &mut submat.b, &mut d);
+            let err = util::test_d_eq_a_b_c(&mut c, &mut submat.a, &mut submat.b, &mut d);
             worst_err = worst_err.max(err);
 
             let mut tmp: Matrix<f64> = Matrix::new_row_major(m, l);
             tmp.fill_zero();
             let mut submat: GotoChainedSub = submat.set_c(tmp); //Subcomputation::new(a, b, tmp);
-            flush_cache(&mut flusher);
+            util::flush_cache(&mut flusher);
 
             let start = Instant::now();
             unsafe {
@@ -177,8 +124,8 @@ fn test_gemm3() {
         }
         println!("{}\t{}\t{}\t{}\t{}\t{}\t{:e}",
                  m, n, k, l,
-                 gflops_ab(m,n,k,l,best_time),
-                 gflops_ab(m,n,k,l,best_time_stock),
+                 util::gflops_ab(m,n,k,l,best_time),
+                 util::gflops_ab(m,n,k,l,best_time_stock),
                  worst_err.sqrt());
     }
     let sum: f64 = flusher.iter().sum();

@@ -1,10 +1,3 @@
-#[allow(dead_code, non_snake_case, non_camel_case_types, non_upper_case_globals)]
-#[cfg(feature="blis")]
-pub mod blis_types 
-{
-    include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
-}
-
 use matrix::{Scalar};
 use core::marker::{PhantomData};
 use typenum::{Unsigned};
@@ -37,7 +30,7 @@ pub mod hsw
     use self::libc::{ c_double, int64_t };
     use typenum::{U4,U6,U8,U12};
     use kern::ukernel_wrapper::{GenericUkernelWrapper,UkernelWrapper};
-    use kern::ukernel_wrapper::blis_types::{auxinfo_t,pack_t,inc_t};
+    use blis_types::{auxinfo_t,pack_t,inc_t};
 
     //Haswell ukernels
     extern{
@@ -115,7 +108,7 @@ pub mod snb
     use self::libc::{ c_double, int64_t };
     use typenum::{U4,U8};
     use kern::ukernel_wrapper::{GenericUkernelWrapper,UkernelWrapper};
-    use kern::ukernel_wrapper::blis_types::{auxinfo_t,pack_t,inc_t};
+    use blis_types::{auxinfo_t,pack_t,inc_t};
 
     //Haswell ukernels
     extern{
@@ -151,7 +144,7 @@ pub mod knl
     use self::libc::{ c_double, int64_t };
     use typenum::{U24,U8};
     use kern::ukernel_wrapper::{GenericUkernelWrapper,UkernelWrapper};
-    use kern::ukernel_wrapper::blis_types::{auxinfo_t,pack_t,inc_t};
+    use blis_types::{auxinfo_t,pack_t,inc_t};
 
 	// KNL ukernels
 	extern{

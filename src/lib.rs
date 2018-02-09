@@ -23,3 +23,4 @@ pub mod composables;
 pub mod thread_comm;
 pub mod kern;
 pub mod util;
+pub mod algorithms;

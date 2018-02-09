@@ -6,33 +6,14 @@ extern crate libc;
 
 use std::time::{Instant};
 
-pub use momms::matrix::{Scalar, Mat, ColumnPanelMatrix, RowPanelMatrix, Matrix,
-                        Subcomputation};
-pub use momms::composables::{GemmNode, AlgorithmStep, PartM, PartN, PartK, PackA, PackB,
-                             ForceB, TripleLoop};
-pub use momms::kern::{Ukernel, KernelNM};
+pub use momms::matrix::{Matrix, Mat};
+pub use momms::composables::{GemmNode};
+pub use momms::algorithms::{GotoDgemm};
 pub use momms::util;
 pub use momms::thread_comm::ThreadInfo;
 
 fn test_gemm() {
-    use typenum::{UInt, B0};
-    type U3000 = UInt<UInt<typenum::U750, B0>, B0>;
-    type Nc = U3000;
-    type Kc = typenum::U192;
-    type Mc = typenum::U120;
-    type Mr = typenum::U4;
-    type Nr = typenum::U12;
-
-    type Goto<T, MTA, MTB, MTC> =
-          PartN<T, MTA, MTB, MTC, Nc,
-          PartK<T, MTA, MTB, MTC, Kc,
-          PackB<T, MTA, MTB, MTC, ColumnPanelMatrix<T, Nr>,
-          PartM<T, MTA, ColumnPanelMatrix<T,Nr>, MTC, Mc,
-          PackA<T, MTA, ColumnPanelMatrix<T,Nr>, MTC, RowPanelMatrix<T,Mr>,
-          KernelNM<T, RowPanelMatrix<T,Mr>, ColumnPanelMatrix<T,Nr>, MTC, Nr, Mr>>>>>>;
-
-    type GotoPrime = Goto<f64, Matrix<f64>, Matrix<f64>, Matrix<f64>>;
-    let mut goto: GotoPrime = GotoPrime::new();
+    let mut goto = GotoDgemm::new();
 
     let flusher_len = 32*1024*1024; //256MB
     let mut flusher: Vec<f64> = Vec::with_capacity(flusher_len);

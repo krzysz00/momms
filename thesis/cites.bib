@@ -1,0 +1,54 @@
+@article{Smith2017,
+abstract = {A tight lower bound for required I/O when computing a matrix-matrix multiplication on a processor with two layers of memory is established. Prior work obtained weaker lower bounds by reasoning about the number of $\backslash$textit{\{}phases{\}} needed to perform {\$}C:=AB{\$}, where each phase is a series of operations involving {\$}S{\$} reads and writes to and from fast memory, and {\$}S{\$} is the size of fast memory. A lower bound on the number of phases was then determined by obtaining an upper bound on the number of scalar multiplications performed per phase. This paper follows the same high level approach, but improves the lower bound by considering {\$}C:=AB+C{\$} instead of {\$}C:=AB{\$}, and obtains the maximum number of scalar fused multiply-adds (FMAs) per phase instead of scalar additions. Key to obtaining the new result is the decoupling of the per-phase I/O from the size of fast memory. The new lower bound is {\$}2mnk/\backslashsqrt{\{}S{\}}-2S{\$}. The constant for the leading term is an improvement of a factor {\$}4\backslashsqrt{\{}2{\}}{\$}. A theoretical algorithm that attains the lower bound is given, and how the state-of-the-art Goto's algorithm also in some sense meets the lower bound is discussed.},
+archivePrefix = {arXiv},
+arxivId = {1702.02017},
+author = {Smith, Tyler Michael and van de Geijn, Robert A.},
+eprint = {1702.02017},
+file = {:home/krzys/Documents/fall-2017/thesis-papers/Pushing the Bounds for Matrix-Matrix Multiplication - Smith, van de Geijn.pdf:pdf},
+mendeley-groups = {FLAME and BLIS},
+pages = {1--11},
+title = {{Pushing the Bounds for Matrix-Matrix Multiplication}},
+url = {http://arxiv.org/abs/1702.02017},
+year = {2017}
+}
+
+@article{Gunnels2006,
+abstract = {During the last half-decade, a number of research efforts have centered around developing software for generating automatically tuned matrix multiplication kernels. These include the PHiPAC project and the ATLAS project. The software end-products of both projects employ brute force to search a parameter space for blockings that accommodate multiple levels of memory hierarchy. We take a different approach: using a simple model of hierarchical memories we employ mathematics to determine a locally-optimal strategy for blocking matrices. The theoretical results show that, de-pending on the shape of the matrices involved, different strategies are locally-optimal. Rather than determining a blocking strategy at library generation time, the theoret-ical results show that, ideally, one should pursue a heuristic that allows the blocking strategy to be determined dynamically at run-time as a function of the shapes of the operands. When the resulting family of algorithms is combined with a highly optimized inner-kernel for a small matrix multiplication, the approach yields performance that is superior to that of methods that automatically tune such kernels. Preliminary results, for the Intel Pentium (R) III processor, support the theoretical insights.},
+author = {Gunnels, John A. and Gustavson, Fred G. and Henry, Greg M. and {Van De Geijn}, Robert A.},
+doi = {10.1007/11558958_30},
+file = {:home/krzys/Documents/fall-2017/thesis-papers/A family of high-performance matrix multiplication algorithms - Gunnels et al.pdf:pdf},
+isbn = {3540290672},
+issn = {03029743},
+journal = {Lecture Notes in Computer Science (including subseries Lecture Notes in Artificial Intelligence and Lecture Notes in Bioinformatics)},
+mendeley-groups = {FLAME and BLIS},
+pages = {256--265},
+title = {{A family of high-performance matrix multiplication algorithms}},
+volume = {3732 LNCS},
+year = {2006}
+}
+
+@article{Low2016,
+author = {Low, Tze Meng and Igual, Francisco D. and Smith, Tyler M. and Quintana-Orti, Enrique S.},
+doi = {10.1145/2925987},
+file = {:home/krzys/Documents/fall-2017/thesis-papers/Analytical Modeling Is Enough for High-Performance BLIS - Low et al.pdf:pdf},
+issn = {00983500},
+journal = {ACM Transactions on Mathematical Software},
+mendeley-groups = {FLAME and BLIS},
+number = {2},
+pages = {1--18},
+title = {{Analytical Modeling Is Enough for High-Performance BLIS}},
+url = {http://dl.acm.org/citation.cfm?doid=2988256.2925987},
+volume = {43},
+year = {2016}
+}
+
+@phdthesis{SmithDiss2017,
+author = {Smith, Tyler Michael},
+file = {:home/krzys/Documents/fall-2017/thesis-papers/SMITH-DISSERTATION-2017.pdf:pdf},
+mendeley-groups = {FLAME and BLIS},
+school = {The University of Texas at Austin},
+title = {{Theory and Practice of Classical Matrix-Matrix Multiplication for Hierarchical Memory Architectures}},
+type = {PhD},
+url = {https://repositories.lib.utexas.edu/bitstream/handle/2152/63352/SMITH-DISSERTATION-2017.pdf?sequence=1{\&}isAllowed=y},
+year = {2017}
+}

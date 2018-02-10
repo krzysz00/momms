@@ -15,7 +15,7 @@ pub use momms::thread_comm::ThreadInfo;
 fn test_gemm() {
     let mut goto = GotoDgemm::new();
 
-    let flusher_len = 32*1024*1024; //256MB
+    let flusher_len = 2*1024*1024; //16MB
     let mut flusher: Vec<f64> = Vec::with_capacity(flusher_len);
     for _ in 0..flusher_len {
         flusher.push(0.0);

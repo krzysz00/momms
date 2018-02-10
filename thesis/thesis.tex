@@ -1,5 +1,7 @@
 \documentclass[12pt]{article}
 
+\usepackage[margin=1in]{geometry}
+
 \usepackage{mathtools,amsthm}
 \usepackage{fontspec}
 \usepackage{microtype}
@@ -7,10 +9,95 @@
 \usepackage[noend]{algpseudocode}
 \usepackage{algorithm}
 \newcommand*\Let[2]{\State #1 $\gets$ #2}
+\newcommand*{\TO}{\textbf{to}}
 % since gemm3 can't be a matro name
-\newcommand{\pluseq}{\mathrel{{+}{=}}}
-\newcommand{\gemmt}{{\texttt{gemm3()}}}
-\newcommand{\gemm}{{\texttt{gemm()}}}
+\newcommand*{\pluseq}{\mathrel{{+}{=}}}
+\newcommand*{\gemmt}{{\textsc{gemm3()}}}
+\newcommand*{\gemm}{{\textsc{gemm()}}}
+
+\usepackage{hyperref}
+\usepackage{biblatex}
+
+\addbibresource{cites.bib}
+
+\usepackage{setspace}
+%\singlespacing{}
+\doublespacing{}
+
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,calc,fit,positioning,chains}
+
+\tikzset{bpack/.style={to path={
+      foreach \i in {1,...,#1} { -- ++(0.5, 0) -- ++ (-0.5,-0.4) } -- (\tikztotarget) \tikztonodes
+    }},
+  bpack/.default=6,
+  apack/.style={to path={
+      foreach \i in {1,...,#1} { -- ++(0, -0.5) -- ++(0.4,0.5) } -- (\tikztotarget) \tikztonodes
+    }},
+  apack/.default=6}
+
+\tikzset{
+  label-brace/.style={to path={
+      (\tikztostart) ++(#1) -- ++(#1)
+      -- ($(\tikztotarget) + 2 *(#1)$) \tikztonodes
+      -- +($-1 *(#1)$)
+    }},
+  brace below/.style={label-brace={0, -3pt}},
+  brace above/.style={label-brace={0, 3pt}},
+  brace right/.style={label-brace={3pt, 0}},
+  brace left/.style={label-brace={-3pt, 0}}}
+
+\tikzset{
+  dim-label/.style={label distance=0pt,inner sep=0},
+}
+
+\tikzset{
+  our-arrow/.style={-{Latex[length=8pt,width=4pt]}},
+}
+
+\tikzset{
+  memory/.style={fill=white},
+  l3/.style={fill=magenta!75},
+  l2/.style={fill=green},
+  l1/.style={fill=cyan},
+  regs/.style={fill=red},
+  legend/.style={on chain=labels, minimum height=1ex, minimum width=1em,
+    draw, rectangle, outer sep=0, label={[label distance=3pt]right:{\small #1}}}
+}
+
+\tikzset{
+  loop-label/.style={midway, draw, rectangle},
+  square-mat/.style={rectangle,draw,fit={(0, 0) (3, -3)},inner sep=0}
+}
+
+\newcommand*{\bpackarr}[1]{\draw[our-arrow] ($(#1 - 0.75, -0.25)$) to[bpack] ++(0.5, -2.4);}
+\newcommand*{\apackarr}[1]{\draw[our-arrow] ($(0.25, - #1 + 0.75)$) to[apack] ++(2.4, -0.5);}
+
+\newcommand*{\bracelabel}[4]{\draw (#1) to[brace #3]%
+  node[midway,label={[dim-label]#3:#4}] {} (#2);}
+
+% [style] name width height N code-for-every
+\newcommand*{\vgrids}[6][fill=white]{
+  \foreach \x in {1, ..., #5} {
+    \node[rectangle, draw, #1,fit={($(#3 * \x - #3, 0)$) ($(#3 * \x, -#4)$)}, inner sep=0] (#2\x) {};
+    #6
+  }
+}
+% [style] name width height N code-for-every
+\newcommand*{\hgrids}[6][fill=white]{
+  \foreach \y in {1, ..., #5} {
+    \node[rectangle, draw, #1,fit={($(0, -\y * #4 + #4)$) ($(#3, -\y * #4)$)}, inner sep=0] (#2\y) {};
+    #6
+  }
+}
+
+\newcommand*{\pluseqnode}[1]{\node[at={(0, -1.5)}] (#1-plus) {\large $\pluseq$};}
+
+% [style] N N - 1 offset-right
+\newcommand*{\loopborder}[3][black]{\draw[rounded corners, color=#1]%
+  (#2-loop.west) -| ($(#3-rect-west) + (-5pt, -5pt)$) coordinate (#2-rect-west)%
+  -- ($(#3-rect-east) + (5pt, -5pt)$) coordinate (#2-rect-east)%
+  |- (#2-loop.east);}
 
 \title{gemm3(): Constant-workspace high-performance multiplication of three matrices}
 \author{Krzysztof A. Drewniak, Tyler M. Smith, Robert van de Gejin}
@@ -28,36 +115,191 @@ This has two drawbacks: the first is that $T$ is often a rather large matrix, wh
 In addition, reading and writing $T$ incurs a performance cost associated with reading and writing main memory.
 
 To combat this issue, we have developed an algorithm for \gemmt{}, that is, the computation of $D \pluseq ABC$, that does not require the entire intermediate product to be stored at one time.
-This algorithm exploits the blocked structure of modern matrix multiplication algorithm to only compute a cache-sized block of $(BC)$ at a time, and uses a recent algorithm that meets a theoretical lower-bound on memory I/O when the output matrix is a square that fits in the highest level of cache.
-It has attained performance gains of 5--6\% (in GFlops/s) over a pair of \gemm{} calls.
+This algorithm exploits the blocked structure of modern matrix multiplication algorithm to only compute a cache-sized block of $(BC)$ at a time, and uses a recent algorithm that meets a theoretical lower-bound on memory I/O when the output matrix is a square that fits in the highest level of cache\cite{Smith2017}.
+It has attained performance gains of 5--6\% (in GFlops/s) over a pair of \gemm{} calls. \textbf{TODO, more intro?}
 
-\textbf{TODO, more intro?}
 \section{Background}
 \subsection{High-Performance \gemm{}}
-Before discussing \gemmt{}, it is important to review the techniques for the operation $C \coloneqq \alpha AB + \beta C$, that is, \gemm{}.
-For simplicity, we'll present the operation as $C \pluseq AB$ for simplicity.
-A naive implementation would proceed as follows (where $A$ is $m$ by $k$, $B$ is $k$ by $n$, and $c$ is $m$ by $n$)
+Before discussing our approach to \gemmt{}, it is important to review the implementation of high-performance \gemm{}.
+High-performance \gemm{} algorithms operate by repeatedly reducing the problem to a series of multiplications of blocks from the inputs.
+These blocks are sized to allow an operand to one of these subproblems to utilize a level of the CPU's cache.
+The multiple reductions are required to effectively utilize all levels of the cache.
+
+There are two specialized primitives that further contribute to efficient \gemm{}.
+The first is the \emph{microkernel}, a highly-tuned, hand-written function (almost always implemented in assembly) that multiplies an $m_R \times k$ panel of $A$ by an $k \times n_R$ panel of $B$ to update an $m_R \times n_R$ region of $C$.
+$m_R$ and $n_R$ are constants based on the microarchitecture of the CPU, which can be derived analytically\cite{Low2016} or by autotuning\textbf{TODO cite someone. ATLAS?}.
+
+In order for the microkernel to operate efficiently, the panels it operates on must be loaded into the system's caches beforehand.
+The data within the panels must be arranged so that the microkernel's memory reads will operate contiguously.
+This is generally achieved by having each panel of $A$ be stored row-major with rows of width $m_R$ and each panel of $B$ stored column-major with height $n_R$.
+
+To fill the cache, several such panels from $A$ and $B$ are placed contiguously in memory in the process of \emph{packing}.
+Since caches have a fixed size, the amount of data that can be packed at any given time is limited.
+Specifically, we can only pack an $m_C \times K_C$ block of $A$ and a $k_C \times n_C$ block of $B$, where $m_C$, $k_C$ and $n_C$ are constants that depend on the cache structure of the CPU, as well as $m_R$ and $n_R$.
+
+We will use $\tilde{A}$ and $\tilde{B}$ to represent the matrices formed by packing data from regions of $A$ and $B$, respectively, and $C'$ to represent the memory region updated by $\tilde{A}\tilde{B}$ at any given time.
+Since the loops that perform $C' \pluseq \tilde{A}\tilde{B}$ are common across all the algorithms we will discuss, we will abstract them into the \emph{macrokernel}, which is shown as Algorithm \ref{alg:macrokernel}.
+In all the algorithms presented in this work, we will use Python-style notation for indexing, that is, matrices are 0-indexed and  $M[a:b, c:d]$ selects rows $[a, b)$ and columns $[c, d)$, with omitted operands spanning to the beginning/end of the dimension.
+
 \begin{algorithm}
-  \caption{Naive implementation of \gemm{}}
-  \begin{algorithmic}[1]
-    \Procedure{gemm}{$A, B, C$}
-    \For{$i \gets 0 \textrm{ up to } m$}
-    \For{$j \gets 0 \textrm{ up to } n$}
-    \For{$c \gets 0 \textrm{ up to } k$}
-    \Let{$C_{i, j}$}{$C_{i, j} + A_{i, c} B_{c, j}$}
+  \caption{The macrokernel of a high-performance \gemm{} implementation}
+  \label{alg:macrokernel}
+  \begin{tikzpicture}
+    \input{macrokernel-picture}
+  \end{tikzpicture}
+  \begin{algorithmic}
+    \Procedure{macrokernel}{$\tilde{A}, \tilde{B}, C'$}
+    \For{$j \gets 0, n_R, \ldots$ \TO{} $n_C$}
+    \For{$i \gets 0, m_R, \ldots$ \TO{} $m_C$}
+    \State{using the microkernel}
+    \State{$C'[i:i + m_R, j:j + n_R] \pluseq \tilde{A}[i:i+m_R,:] \cdot \tilde{B}[:,j:j+n_R]$}
+    \EndFor{}
+    \EndFor{}
+    \EndProcedure{}
+  \end{algorithmic}
+\end{algorithm}
+
+Many high-performance \gemm{} implementations in use today are based on Goto's algorithm\textbf{TODO cite him?}.
+One such implementation(\textbf{algorithm?}) is BLIS\textbf{TODO cite}, which is shown as Algorithm \ref{alg:blis}..
+This algorithm brinks elements of $B$ into the $L_3$ (and later $L_1$) cache, while storing elements of $A$ in $L_2$.
+\begin{algorithm}
+  \caption{The BLIS algorithm}
+  \label{alg:blis}
+  \begin{tikzpicture}
+    \input{blis-picture}
+  \end{tikzpicture}
+  \begin{algorithmic}
+    \Procedure{BLIS\_gemm}{$A, B, C$}
+    \For{$j \gets 0, n_C, \ldots$ \TO{} $n$}
+    \For{$p \gets 0, k_C, \ldots$ \TO{} $k$}
+    \State{pack $B[p:p+k_C,j:j+n_C] \to\tilde{B}$}
+    \For{$i \gets 0, m_C, \ldots$ \TO{} $m$}
+    \State{pack $A[m:m+m_C,p:p+k_C] \to \tilde{A}$}
+    \State{$\textsc{macrokernel}(\tilde{A}, \tilde{B}, C[i:i+m_C,j:j+n_C])$}
     \EndFor{}
     \EndFor{}
     \EndFor{}
     \EndProcedure{}
   \end{algorithmic}
 \end{algorithm}
-This algorithm has serious performance issues in that it accesses the memory of one of the operands ($A$ for row-major storage and $B$ for column-major) at a stride of $k$, which is almost always a number that makes it impossible for the processor to stream both matrices' values into memory through prefectching or to vectorize the memory accesses, which would allow multiple elements of $C$ to be computed simultaneously on the same CPU core.
-Therefore, it is effectively never used in practice except as a verification tool for more efficient algorithms.
 
-Many of the high-performance \gemm{} algorithms in use today are based on the approach of Goto\textbf{TODO cite}
-These algorithms massively improves performance by taking advantage of the multi-level cache present on modern CPU architectures.
-They operate by reducing the \gemm{} to a series of sub-problems that are sized such that their inputs and/or outputs fit into the levels of the system's cache, and additionally by rearranging the inputs to those subploblems into a form that can be streamed from cache by the \emph{microkernel}, a highly-optimized inner loop.
+\subsection{Cache-efficient families of \gemm{} algorithms}\label{subsec:cache-family}
+The BLIS algorithm will, during its operation, re-use the same panel of $\tilde{A}$ multiple times while executing a loop over panels of $\tilde{B}$.
+However, the packed date in $\tilde{B}$ is only used once.
+This both results in a suboptimal algorithm and prevents us from using the BLIS algorithm for \gemm3{}, as it will not be possible to reuse any cache-sized results that are large enough to be useful (that is, those that fit into $L_3$).
 
-One commonly-used algorithm of this type is the BLIS algorithm,
+However, a family of efficient \gemm{} algorithms that supports a larger amount of cache reuse has been identified\cite{Gunnels2006,SmithDiss2017}.
+These algorithms insert an additional loop around the macrokernel to facilitate reuse both in the $L_3$ and $L_2$ caches.
+The algorithms in this family differ in which matrices are resident in each level of cache.
 
+Two of the algorithms in this family are relevant to our work.
+The first is known as $B_3A_2$, (Algorithm \ref{alg:b3a2}) which keeps elements of $B$ and $A$ resident in $L_3$ and $L_2$ cache, respectively.
+The second, which meets a theoretical lower bound for I/O cost when the output has size $\sqrt{S_3} \times \sqrt{S_3}$, where $S_3$ is the size of the $L_3$ cache\cite{Smith2017}, is $C_3A_2$ (Algorithm \ref{alg:c3a2}). \textbf{TODO confirm I've got the reuse properties on that second one right}
+
+Even though the constants in these algorithms share names with those in the BLIS algorithm, their values may be different.
+\begin{algorithm}
+  \caption{$B_3A_2$ algorithm for \gemm{}}
+  \label{alg:b3a2}
+  \begin{algorithmic}
+    \Procedure{B3A2\_gemm}{$A, B, C$}
+    \For{$j \gets 0, n_C, \ldots$ \TO{} $n$}
+    \For{$p \gets 0, k_C, \ldots$ \TO{} $k$}
+    \State{pack $B[p:p+k_C,j:j+n_C] \to\tilde{B}$}
+    \For{$i \gets 0, m_C, \ldots$ \TO{} $m$}
+    \For{$p' \gets p, p + k_{C2}, \ldots$ \TO{} $p + k_C$}
+    \State{pack $A[m:m+m_C,p':p'+k_{C2}] \to \tilde{A}$}
+    \State{$\textsc{macrokernel}(\tilde{A}, \tilde{B}, C[i:i+m_C,j:j+n_C])$}
+    \EndFor{}
+    \EndFor{}
+    \EndFor{}
+    \EndFor{}
+    \EndProcedure{}
+  \end{algorithmic}
+\end{algorithm}
+\begin{algorithm}
+  \caption{$C_3A_2$ algorithm for \gemm{}}
+  \label{alg:c3a2}
+  \begin{algorithmic}
+    \Procedure{C3A2\_gemm}{$A, B, C$}
+    \For{$j \gets 0, n_C, \ldots$ \TO{} $n$}
+    \For{$i \gets 0, m_C, \ldots$ \TO{} $m$}
+    \For{$p \gets 0, k_C, \ldots$ \TO{} $k$}
+    \State{pack $B[p:p+k_C,j:j+n_C] \to \tilde{B}$}
+    \For{$i' \gets i, i + m_{C2}, \ldots$ \TO{} $i + m_C$}
+    \State{pack $A[i':i'+m_{C2},p:p+k_C] \to \tilde{A}$}
+    \State{$\textsc{macrokernel}(\tilde{A}, \tilde{B}, C[i':i'+m_{C2},j:j+n_C])$}
+    \EndFor{}
+    \EndFor{}
+    \EndFor{}
+    \EndFor{}
+    \EndProcedure{}
+  \end{algorithmic}
+\end{algorithm}
+
+\section{Algorithm and Method}
+For our discussion of \gemmt{}, we well be considering the operation $D \pluseq ABC$, where $A$ is $m \times k$, $B$ is $k \times l$ and $C$ is $l \times n$.
+
+Our algorithm fuses together the $B_3A_2$ and $C_3A_2$ algorithms.
+To do this, we replace the ``pack into $\tilde{B}$'' step of Algorithm \ref{alg:b3a2} (the ``outer'' algorithm) with a call to a variant of Algorithm \ref{alg:c3a2} (the ``inner'' algorithm).
+For our implementation, the inner algorithm has had its outer two loops removed, and has had its macrokernel adjusted to output in the packed format needed by the outer algorithm.
+The only change made to the outer algorithm was to adjust $n_C$ and $k_C$ so the inner algorithm would have an approximation to  $\sqrt{S_3}$ by $\sqrt{S_3}$ for its output.
+The complete algorithm is Algorithm \ref{alg:gemm3}.
+
+The outer and inner algorithm were chosen over other elements of their family because, if they are run in the fused configuration, the output of the inner algorithm will be where the outer algorithm expects it --- in $L_3$ cache.
+\begin{algorithm}
+  \caption{Algorithm for \gemm3{}}
+  \label{alg:gemm3}
+  \textbf{TODO picture}
+  \begin{algorithmic}
+    \Procedure{gemm3}{$A, B, C, D$}
+    \For{$j_o \gets 0, n_{Ci}, \ldots$ \TO{} $n$}
+    \For{$p_o \gets 0, m_{Ci}, \ldots$ \TO{} $k$}
+    \For{$p_i \gets 0, k_{Ci}, \ldots$ \TO{} $l$}
+    \State{pack $C[p_i:p_i+k_{Ci},j_o:j_o+n_{Ci}] \to \tilde{B_i}$}
+    \For{$i_i \gets p_0, p_0 + m_{Ci2}, \ldots$ \TO{} $p_0 + m_{Ci}$}
+    \State{pack $B[i_i:i_i+m_{Ci2},p_i:p_i+k_{Ci}] \to \tilde{A_i}$}
+    \State{$\textsc{macrokernel}(\tilde{A_i}, \tilde{B_i}, \tilde{B_o})$}
+    \Comment{writes in packed form}
+    \EndFor{}
+    \EndFor{}
+    \For{$i \gets 0, m_{Co}, \ldots$ \TO{} $m$}
+    \For{$p' \gets p, p + k_{C2}, \ldots$ \TO{} $p + k_C$}
+    \State{pack $A[m:m+m_C,p':p'+k_{C2}] \to \tilde{A_o}$}
+    \State{$\textsc{macrokernel}(\tilde{A_o}, \tilde{B_o}, D[i:i+m_C,j:j+n_C])$}
+    \EndFor{}
+    \EndFor{}
+    \EndFor{}
+    \EndFor{}
+    \EndProcedure{}
+  \end{algorithmic}
+\end{algorithm}
+
+It should be noted that the given algorithm computes $D \pluseq A(BC)$.
+Our attempt to derive an algorithm directly for $D \pluseq (AB)C$ using an algorithm that keeps $A$ resident in $L_3$ yielded poor results.
+However, we can observe that, to compute $D \pluseq (AB)C$, we can compute $D^T = C^T(B^TA^T)$, and that interpreting column-major matrices as row-major (or vice-versa) would be equivalent to those transposes.
+This means that we can use the same algorithm for both possible parenthizations of $D \pluseq ABC$ without significant performance costs.
+
+\subsection{Constants}
+\textbf{TODO get unblocked on this}
+
+\subsection{Testing methodology}
+We implemented this algorithm in the \textbf{TODO expand acronym} (MOMMS) framework, which was developed to rapidly implement multiple algorithms from the family discussed in Subsection \ref{subsec:cache-family}\cite{SmithDiss2017}.
+This framework, which is implemented in the Rust programming language, was first used to implement the BLIS algorithm as a baseline for comparisons.
+The MOMMS implementation of the BLIS algorithm had comprable performance to the original.
+
+(Things to discuss)
+\begin{itemize}
+\item Paralellization
+\item Choice of machine(s)
+\item Haswell and KNL (if we do a KNL thing)
+\item Probably some other stuff
+\end{itemize}
+
+\section{Results}
+\textbf{TODO fix the experiments first}
+
+\section{Discussion}
+\textbf{TODO have better results first}
+
+\printbibliography{}
 \end{document}

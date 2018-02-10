@@ -1,0 +1,91 @@
+\matrix (loops)[column sep=0.2cm, row sep=5.5ex] {
+  \node[square-mat] (3C) {$C[:,j:j+n_C]$};
+  \bracelabel{3C.north west}{3C.north east}{above}{$n_C$}
+  \draw[dashed] (3C.north east) -- ++(0.75, 0)
+  (3C.south east) -- ++(0.75, 0);&
+
+  \pluseqnode{3}&
+
+  \node[square-mat,memory] (3A) {\Large $A$};&
+
+  \node[square-mat,memory] (3B) {$B[:,j:j+n_C]$};
+  \bracelabel{3B.north west}{3B.north east}{above}{$n_C$}
+  \draw[dashed] (3B.north east) -- ++(0.75, 0)
+  (3B.south east) -- ++(0.75, 0);\\
+
+
+  \node[square-mat,memory] (2C) {$C[\ldots]$};&
+
+  \pluseqnode{2}&
+
+  \vgrids[memory]{2A}{1}{3}{3}{}
+  \node[at=(2A1),rotate=-90] {$A[:,p:p+k_C]$};
+  \bracelabel{2A1.south west}{2A1.south east}{below}{$k_C$}&
+
+  \hgrids[memory]{2B}{3}{1}{3}{}
+  \node[at=(2B1)] {$B[\ldots]$};
+  \bracelabel{2B1.north west}{2B1.south west}{left}{$k_C$}\\
+
+
+  \hgrids[memory]{1C}{3}{1}{3}{}
+  \node[at=(1C1)] {$C[\ldots]$};
+  \bracelabel{1C1.north east}{1C1.south east}{right}{$m_C$}&
+
+  \pluseqnode{1}&
+
+  \hgrids[memory]{1A}{1}{1}{3}{}
+  \node[at=(1A1)] {$A[\ldots]$};
+  \bracelabel{1A1.north west}{1A1.south west}{left}{$m_C$}&
+
+  \node[rectangle,draw,l3,at={(0, 0)},anchor=north west, minimum height=1cm, minimum width=3cm] (1B) {$\tilde{B}$};\\
+
+  \node[rectangle,draw,memory,at={(1.5, 0)},anchor=north west,minimum height=1.5cm, minimum width=1.5cm] (0C) {$C'$};
+  \begin{scoped}[start chain=labels going {below=2pt of \tikzchainprevious}]
+    \node[legend=Main Memory, memory] at (0, -1.8) {};
+    \node[legend=L3 cache, l3] {};
+    \node[legend=L2 cache, l2] (legend-anchor) {};
+  \end{scoped}&
+
+  \pluseqnode{0}&
+
+  \node[rectangle,draw,l2,at={(0, 0)},anchor=north west, minimum height=3cm, minimum width=1cm] (0A) {$\tilde{A}$};&
+
+  \node[rectangle,draw,l3,at={(0, 0)},anchor=north west,minimum height=1cm, minimum width=3cm] (0B) {$\tilde{B}$};\\
+};
+\path node[draw,above=1.8cm of 3-plus] (3-loop){3rd loop around macrokernel}
+(3-plus) -- (2-plus) node[loop-label] (2-loop){2nd loop around macrokernel}
+(2-plus) -- (1-plus) node[loop-label] (1-loop) {1st loop around macrokernel}
+(1-plus) -- (0-plus) node[loop-label] (0-loop) {Macrokernel};
+
+\draw[rounded corners] let \p1 = ($(0A.south) + (0pt, -10pt)$),
+\p2 = ($(0B.south east) + (30pt, -5pt)$),
+\p3 = ($(labels-end.south west) + (-5pt, -10pt)$),
+\p{east} = (\x2, \y1), \p{west} = (\x3, \y1) in
+(1-loop.west) -| (\p{west}) coordinate (1-rect-west)
+-- (\p{east}) coordinate (1-rect-east)
+|- (1-loop.east);
+
+\loopborder{2}{1}
+\loopborder{3}{2}
+
+\draw let \p1 = (0-loop),
+\p2 = (1-rect-west),
+\p3 = (1-rect-east),
+\p{west-end} = (\x2, \y1),
+\p{east-end} = (\x3, \y1) in
+(0-loop.east) -- (\p{east-end})
+(0-loop.west) -- (\p{west-end});
+
+\path[draw, l3] (2B1.east) ++(2.5pt, 5pt) coordinate (B-arr-start)
+-| ($(1B.east) + (20pt, 0pt)$) node[pos=0.82,left=3pt] {Pack $B[\ldots] \to \tilde{B}$} coordinate (B-arr-down)
+-- ++ (-10pt, 0)
+-- ++(0pt, 2.5pt) -- ++(-5pt, -5pt) -- ++(5pt, -5pt) -- ++(0, 2.5pt)
+-- ($(B-arr-down) + (5pt, -5pt)$)
+|- ($(B-arr-start) + (0pt, 5pt)$);
+
+\path[draw, l2] (1A1.east) ++(2.5pt, 5pt) coordinate (A-arr-start)
+-| ($(0A.east) + (20pt, 0pt)$) node[pos=0.7,right=3pt] {Pack $A[\ldots] \to \tilde{A}$} coordinate (A-arr-down)
+-- ++ (-10pt, 0)
+-- ++(0pt, 2.5pt) -- ++(-5pt, -5pt) -- ++(5pt, -5pt) -- ++(0, 2.5pt)
+-- ($(A-arr-down) + (5pt, -5pt)$)
+|- ($(A-arr-start) + (0pt, 5pt)$);

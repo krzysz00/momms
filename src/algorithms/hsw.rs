@@ -6,19 +6,20 @@ use kern::{KernelNM};
 use typenum::{UInt, B0};
 
 // BLIS's constants
-// type U4080 = UInt<UInt<typenum::U1020, B0>, B0>;
-// type Nc = U4080;
-// type Kc = typenum::U256;
-// type Mc = typenum::U72;
-// type Mr = typenum::U6;
-// type Nr = typenum::U8;
+type U4080 = UInt<UInt<typenum::U1020, B0>, B0>;
+type Nc = U4080;
+type Kc = typenum::U256;
+type Mc = typenum::U72;
+type Mr = typenum::U6;
+type Nr = typenum::U8;
 
-type U3000 = UInt<UInt<typenum::U750, B0>, B0>;
-type Nc = U3000;
-type Kc = typenum::U192;
-type Mc = typenum::U120;
-type Mr = typenum::U4;
-type Nr = typenum::U12;
+// Old constants
+// type U3000 = UInt<UInt<typenum::U750, B0>, B0>;
+// type Nc = U3000;
+// type Kc = typenum::U192;
+// type Mc = typenum::U120;
+// type Mr = typenum::U4;
+// type Nr = typenum::U12;
 
 type Goto<T, MTA, MTB, MTC> =
       PartN<T, MTA, MTB, MTC, Nc,
@@ -39,7 +40,7 @@ pub type GotoDgemm3 =
     GotoDgemm, GotoDgemm>>;
 
     // type RootS3 = typenum::U768;
-type McL2 = typenum::U120;
+type McL2 = typenum::U72; //typenum::U120;
 pub type ColPM<T> = ColumnPanelMatrix<T, Nr>;
 pub type RowPM<T> = RowPanelMatrix<T, Mr>;
 

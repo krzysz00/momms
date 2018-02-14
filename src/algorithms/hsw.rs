@@ -40,11 +40,11 @@ pub type GotoDgemm3 =
     GotoDgemm, GotoDgemm>>;
 
     // type RootS3 = typenum::U768;
-type McL2 = typenum::U72; //typenum::U120;
+type McL2 = typenum::U156; //typenum::U120;
 pub type ColPM<T> = ColumnPanelMatrix<T, Nr>;
 pub type RowPM<T> = RowPanelMatrix<T, Mr>;
 
-type L3CNc = typenum::U624;
+type L3CNc = typenum::U780;
 type L3CKc = typenum::U156;
 //Resident C algorithm, inner loops
 type L3CInner<T, MTA, MTB, MTC> =

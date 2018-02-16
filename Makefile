@@ -34,6 +34,6 @@ plots: results $(wildcard results/plot_*.py)
 	./results/plot_experiment_memory.py $(DATADIR)/gemm3.dat "A(BC)" "Memory usage of gemm3() vs. BLIS algorithm, square matrices" "N" $(DATADIR)/gemm3_memory.$(PLOTEXT)
 	./results/plot_multi_shape_experiment_memory.py $(DATADIR)/gemm3_rectangles.dat "A(BC)" "Memeroy usage of right paranthesized kernel vs. BLIS algo., narrow dimension = 9" $(DATADIR)/gemm3_rectangles_memory.$(PLOTEXT)
 
-	./results/plot_percent_change.py $(DATADIR)/gemm3_changes.dat "D += A(BC), square matrices" "N" $(DATADIR)/gemm3.$(PLOTEXT)
+	./results/plot_percent_change.py $(DATADIR)/gemm3_changes.dat "D += A(BC), square matrices" "N" $(DATADIR)/gemm3_changes.$(PLOTEXT)
 	./results/plot_percent_change.py $(DATADIR)/gemm3_ab_bc_kernel_changes.dat "D^T += C^T(B^TA^T), square matrices" "N" $(DATADIR)/gemm3_ab_bc_kernel_changes.$(PLOTEXT)
 	./results/plot_percent_change.py $(DATADIR)/gemm3_parallel_changes.dat "D += A(BC), square matrices, 4 cores" "N" $(DATADIR)/gemm3_parallel_changes.$(PLOTEXT)

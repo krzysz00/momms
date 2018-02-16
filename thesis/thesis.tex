@@ -29,6 +29,11 @@
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,calc,fit,positioning,chains}
 
+\definecolor{l3-color}{cmyk}{0,0.06,0.12,0}
+\definecolor{l2-color}{cmyk}{0,0.2,0.4,0}
+\definecolor{l1-color}{cmyk}{0,0.45,0.55,0}
+\definecolor{reg-color}{cmyk}{0.15,0.8,0.8,0}
+
 \tikzset{bpack/.style={to path={
       foreach \i in {1,...,#1} { -- ++(0.5, 0) -- ++ (-0.5,-0.4) } -- (\tikztotarget) \tikztonodes
     }},
@@ -59,17 +64,19 @@
 
 \tikzset{
   memory/.style={fill=white},
-  l3/.style={fill=magenta!75},
-  l2/.style={fill=green},
-  l1/.style={fill=cyan},
-  regs/.style={fill=red},
+  l3/.style={fill=l3-color},
+  l2/.style={fill=l2-color},
+  l1/.style={fill=l1-color},
+  regs/.style={fill=reg-color},
   legend/.style={on chain=labels, minimum height=1ex, minimum width=1em,
     draw, rectangle, outer sep=0, label={[label distance=3pt]right:{\small #1}}}
 }
 
 \tikzset{
   loop-label/.style={midway, draw, rectangle},
-  square-mat/.style={rectangle,draw,fit={(0, 0) (3, -3)},inner sep=0}
+  square-mat/.style={rectangle,draw,fit={(0, 0) (3, -3)},inner sep=0},
+  wide-mat/.style={rectangle,draw,fit={(0, 0) (3, -1)},inner sep=0},
+  tall-mat/.style={rectangle,draw,fit={(0, 0) (1, -3)},inner sep=0}
 }
 
 \newcommand*{\bpackarr}[1]{\draw[our-arrow] ($(#1 - 0.75, -0.25)$) to[bpack] ++(0.5, -2.4);}
@@ -286,21 +293,19 @@ The outer and inner algorithm were chosen over other elements of their family be
   \label{alg:gemm3}
   \begin{algorithmic}
     \Procedure{gemm3}{$A, B, C, D$}
-    \For{$j \gets 0, n_{Ci}, \ldots$ \TO{} $n$}
-    \For{$p_o \gets 0, m_{Ci}, \ldots$ \TO{} $k$}
-    \For{$p_i \gets 0, k_{Ci}, \ldots$ \TO{} $l$}
-    \State{pack $C[p_i:p_i+k_{Ci},j_o:j_o+n_{Ci}] \to \tilde{C}$}
-    \For{$i_i \gets p_0, p_0 + m_{Ci2}, \ldots$ \TO{} $p_0 + m_{Ci}$}
-    \State{pack $B[i_i:i_i+m_{Ci2},p_i:p_i+k_{Ci}] \to \tilde{B}$}
+    \For{$j \gets 0, n_C, \ldots$ \TO{} $n$}
+    \For{$p \gets 0, k_C, \ldots$ \TO{} $k$}
+    \For{$q \gets 0, l_C, \ldots$ \TO{} $l$}
+    \State{pack $C[q:q+l_C,j:j+n_C] \to \tilde{C}$}
+    \For{$i \gets 0, m_C, \ldots$ \TO{} $k_C$}
+    \State{pack $B[i:i+m_C,q:q+l_C] \to \tilde{B}$}
     \State{$\textsc{macrokernel}(\tilde{B}, \tilde{C}, \tilde{BC})$}
     \Comment{writes in packed form}
     \EndFor{}
     \EndFor{}
-    \For{$i_o \gets 0, m_{Co}, \ldots$ \TO{} $m$}
-    \For{$p' \gets p, p + k_{C2}, \ldots$ \TO{} $p + k_C$}
-    \State{pack $A[m:m+m_C,p':p'+k_{C2}] \to \tilde{A}$}
+    \For{$i \gets 0, m_C, \ldots$ \TO{} $m$}
+    \State{pack $A[m:m+m_C,p:p+k_C] \to \tilde{A}$}
     \State{$\textsc{macrokernel}(\tilde{A}, \tilde{BC}, D[i:i+m_C,j:j+n_C])$}
-    \EndFor{}
     \EndFor{}
     \EndFor{}
     \EndFor{}

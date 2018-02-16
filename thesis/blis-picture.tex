@@ -37,7 +37,7 @@
   \node[at=(1A1)] {$A[\ldots]$};
   \bracelabel{1A1.north west}{1A1.south west}{left}{$m_C$}&
 
-  \node[rectangle,draw,l3,at={(0, 0)},anchor=north west, minimum height=1cm, minimum width=3cm] (1B) {$\tilde{B}$};\\
+  \node[l3,wide-mat] (1B) {$\tilde{B}$};\\
 
   \node[rectangle,draw,memory,at={(1.5, 0)},anchor=north west,minimum height=1.5cm, minimum width=1.5cm] (0C) {$C'$};
   \begin{scoped}[start chain=labels going {below=2pt of \tikzchainprevious}]
@@ -48,9 +48,9 @@
 
   \pluseqnode{0}&
 
-  \node[rectangle,draw,l2,at={(0, 0)},anchor=north west, minimum height=3cm, minimum width=1cm] (0A) {$\tilde{A}$};&
+  \node[l2,tall-mat] (0A) {$\tilde{A}$};&
 
-  \node[rectangle,draw,l3,at={(0, 0)},anchor=north west,minimum height=1cm, minimum width=3cm] (0B) {$\tilde{B}$};\\
+  \node[l3,wide-mat] (0B) {$\tilde{B}$};\\
 };
 \path node[draw,above=1.8cm of 3-plus] (3-loop){3rd loop around macrokernel}
 (3-plus) -- (2-plus) node[loop-label] (2-loop){2nd loop around macrokernel}

@@ -1,0 +1,300 @@
+\documentclass[12ptnotitlepage]{article}
+\pagestyle{empty}
+
+\usepackage[margin=2pt,papersize={7.25in, 11.5in}]{geometry}
+
+\usepackage{mathtools}
+\newcommand*{\pluseq}{\mathrel{{+}{=}}}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,calc,fit,positioning,chains}
+
+\tikzset{bpack/.style={to path={
+      foreach \i in {1,...,#1} { -- ++(0.5, 0) -- ++ (-0.5,-0.4) } -- (\tikztotarget) \tikztonodes
+    }},
+  bpack/.default=6,
+  apack/.style={to path={
+      foreach \i in {1,...,#1} { -- ++(0, -0.5) -- ++(0.4,0.5) } -- (\tikztotarget) \tikztonodes
+    }},
+  apack/.default=6}
+
+\tikzset{
+  label-brace/.style={to path={
+      (\tikztostart) ++(#1) -- ++(#1)
+      -- ($(\tikztotarget) + 2 *(#1)$) \tikztonodes
+      -- +($-1 *(#1)$)
+    }},
+  brace below/.style={label-brace={0, -3pt}},
+  brace above/.style={label-brace={0, 3pt}},
+  brace right/.style={label-brace={3pt, 0}},
+  brace left/.style={label-brace={-3pt, 0}}}
+
+\tikzset{
+  dim-label/.style={label distance=0pt,inner sep=0},
+}
+
+\tikzset{
+  our-arrow/.style={-{Latex[length=8pt,width=4pt]}},
+}
+
+\tikzset{
+  memory/.style={fill=white},
+  l3/.style={fill=magenta!75},
+  l2/.style={fill=green},
+  l1/.style={fill=cyan},
+  regs/.style={fill=red},
+  legend/.style={on chain=labels, minimum height=1ex, minimum width=1em,
+    draw, rectangle, outer sep=0, label={[label distance=3pt]right:{\small #1}}}
+}
+
+\tikzset{
+  loop-label/.style={midway, draw, rectangle},
+  square-mat/.style={rectangle,draw,fit={(0, 0) (3, -3)},inner sep=0}
+}
+
+\newcommand*{\bpackarr}[1]{\draw[our-arrow] ($(#1 - 0.75, -0.25)$) to[bpack] ++(0.5, -2.4);}
+\newcommand*{\apackarr}[1]{\draw[our-arrow] ($(0.25, - #1 + 0.75)$) to[apack] ++(2.4, -0.5);}
+
+\newcommand*{\bracelabel}[4]{\draw (#1) to[brace #3]%
+  node[midway,label={[dim-label]#3:#4}] {} (#2);}
+
+\newcommand*{\packlabel}[3]{\path (#1) -- (#2)%
+  node[midway,label={#3:pack}] {};}
+
+% [style] name width height N code-for-every
+\newcommand*{\vgrids}[6][fill=white]{
+  \foreach \x in {1, ..., #5} {
+    \node[rectangle, draw, #1,fit={($(#3 * \x - #3, 0)$) ($(#3 * \x, -#4)$)}, inner sep=0] (#2\x) {};
+    #6
+  }
+}
+% [style] name width height N code-for-every
+\newcommand*{\hgrids}[6][fill=white]{
+  \foreach \y in {1, ..., #5} {
+    \node[rectangle, draw, #1,fit={($(0, -\y * #4 + #4)$) ($(#3, -\y * #4)$)}, inner sep=0] (#2\y) {};
+    #6
+  }
+}
+
+% [first-style] style name width height N code-for-every
+\newcommand*{\vgridscache}[7][memory]{
+  \foreach \x in {1, ..., #6} {
+    \ifnum\x=1%
+    \node[rectangle, draw, #1 ,fit={($(#4 * \x - #4, 0)$) ($(#4 * \x, -#5)$)}, inner sep=0] (#3\x) {};
+    \else
+    \node[rectangle, draw, #2 ,fit={($(#4 * \x - #4, 0)$) ($(#4 * \x, -#5)$)}, inner sep=0] (#3\x) {};
+    \fi
+    #7
+  }
+}
+% [first-style] style name width height N code-for-every
+\newcommand*{\hgridscache}[7][memory]{
+  \foreach \y in {1, ..., #6} {
+    \ifnum\y=1%
+    \node[rectangle, draw, #1,fit={($(0, -\y * #5 + #5)$) ($(#4, -\y * #5)$)}, inner sep=0] (#3\y) {};
+    \else
+    \node[rectangle, draw, #2,fit={($(0, -\y * #5 + #5)$) ($(#4, -\y * #5)$)}, inner sep=0] (#3\y) {};
+    \fi
+    #7
+  }
+}
+
+\newcommand*{\pluseqnode}[1]{\node[at={(0, -1.5)}] (#1-plus) {\large $\pluseq$};}
+
+% [style] N N - 1 offset-right
+\newcommand*{\loopborder}[3][black]{\draw[rounded corners, color=#1]%
+  (#2-loop.west) -| ($(#3-rect-west) + (-5pt, -5pt)$) coordinate (#2-rect-west)%
+  -- ($(#3-rect-east) + (5pt, -5pt)$) coordinate (#2-rect-east)%
+  |- (#2-loop.east);}
+
+\begin{document}
+\begin{tikzpicture}
+\matrix (loops)[column sep=0.2cm, row sep=5.5ex] {
+  \node[square-mat] (4D) {$D[:,j:j+n_{Ci}]$};
+  \bracelabel{4D.north west}{4D.north east}{above}{$n_{Ci}$}
+  \draw[dashed] (4D.north east) -- ++(0.75, 0)
+  (4D.south east) -- ++(0.75, 0);&
+
+  \pluseqnode{4o}&
+
+  \node[square-mat,memory] (4A) {\Large $A$};&
+
+  \node[square-mat,memory,dotted] (4BC) {$(BC)[:,j:j+n_{Ci}]$};
+  \bracelabel{4BC.north west}{4BC.north east}{above}{$n_{Ci}$}
+  \draw[dashed] (4BC.north east) -- ++(0.75, 0)
+  (4BC.south east) -- ++(0.75, 0);\\
+
+
+  \node[square-mat,memory] (3D) {$D[\ldots]$};&
+
+  \pluseqnode{3o}&
+
+  \vgrids[memory]{3A}{1}{3}{3}{}
+  \node[at=(3A1),rotate=-90] {$A[:,p:p+m_{Co}]$};
+  \bracelabel{3A1.south west}{3A1.south east}{below}{$m_{Co}$}&
+
+  \hgrids[memory,dotted]{3BC}{3}{1}{3}{}
+  \node[at=(3BC1)] {$BC[\ldots]$};
+  \bracelabel{3BC1.north west}{3BC1.south west}{left}{$k_C$}\\
+
+  %% Inner loop starts
+  \vgrids[l3]{2BCi}{1}{3}{3}{\bpackarr{\x}}
+  \bracelabel{2BCi1.north west}{2BCi1.north east}{above}{$n_R$}
+  \bracelabel{2BCi1.south west}{2BCi3.south east}{below}{$k_{Ci}$}
+  \path (2BCi1.north west) -- (2BCi3.north east) node[midway,label={above:$\tilde{BC}$}] {};&
+
+  \pluseqnode{2i}&
+
+  \vgrids[memory]{2B}{1}{3}{3}{}
+  \node[at=(2B1),rotate=-90] {$B[\ldots]$};
+  \bracelabel{2B1.south west}{2B1.south east}{below}{$k_{Ci}$}&
+
+  \hgridscache[l3]{memory}{2C}{3}{1}{3}{}
+  \node[at=(2C1)] {$C[\ldots]$};
+  \bracelabel{2C1.north west}{2C1.south west}{left}{$k_{Ci}$}
+  \packlabel{2C1.north east}{2C1.south east}{right}\\
+
+
+  \hgrids[l3]{1BCi}{3}{1}{3}{}
+  \node[at=(1BCi1)] {$BC[\ldots]$};
+  \bracelabel{1BCi1.north east}{1BCi1.south east}{right}{$m_{C2i}$}&
+
+  \pluseqnode{1i}&
+
+  \hgridscache[l2]{memory}{1B}{1}{1}{3}{}
+  \node[at=(1B1)] {$B[\ldots]$};
+  \bracelabel{1B1.north west}{1B1.south west}{left}{$m_{C2i}$}
+  \packlabel{1B1.north east}{1B1.south east}{right}&
+
+  \node[rectangle,draw,l3,at={(0, 0)},anchor=north west, minimum height=1cm, minimum width=3cm] (1C) {$\tilde{C}$};\\
+
+  &\node[draw,rectangle] (kern-inner) {Macrokernel};&&\\
+
+  %% Inner loop ends
+
+  \hgrids[memory]{2D}{3}{1}{3}{}
+  \node[at=(2D1)] {$D[\ldots]$};
+  \bracelabel{2D1.north east}{2C1.south east}{right}{$m_{Co}$}&
+
+  \pluseqnode{2o}&
+
+  \hgrids[memory]{2A}{1}{1}{3}{}
+  \node[at=(2A1)] {$A[\ldots]$};
+  \bracelabel{2A1.north west}{2A1.south west}{left}{$m_{Co}$}&
+
+  \node[rectangle,draw,l3,at={(0, 0)},anchor=north west, minimum height=1cm, minimum width=3cm] (2BCo) {$\tilde{BC}$};\\
+
+  \node[square-mat,memory] (1D) {$D[\ldots]$};&
+
+  \pluseqnode{1o}&
+
+  \vgridscache[l2]{memory}{1A}{1}{1}{3}{}
+  \node[at=(1A1)] {$A$};
+  \bracelabel{1A1.south west}{1A1.south east}{below}{$k_{C2o}$}
+  \packlabel{1A1.north west}{1A1.north east}{above}&
+
+  \hgrids[memory]{1BCo}{3}{1}{3}{}
+  \node[at=(1BCo1)] {$\tilde{BC}[\ldots]$};
+  \bracelabel{1BCo1.north west}{1BCo1.south west}{left}{$k_{C2o}$}\\
+};
+\path node[draw,above=1.8cm of 4o-plus] (4o-loop){4th loop, both}
+(4o-plus) -- (3o-plus) node[loop-label] (3o-loop){3rd loop, both}
+(3o-plus) -- (2i-plus) node[loop-label] (2i-loop){2nd loop, inner}
+(2i-plus) -- (1i-plus) node[loop-label] (1i-loop){1st loop, inner}
+(kern-inner) -- (2o-plus) node[loop-label,pos=0.35] (2o-loop){2nd loop, outer}
+(2o-plus) -- (1o-plus) node[loop-label] (1o-loop) {1st loop, outer}
+node[draw, below=1.8cm of 1o-plus] (kern-outer) {Macrokernel};
+
+\draw[rounded corners] let \p1 = ($(kern-outer.south) + (0pt, -5pt)$),
+\p2 = ($(1BCo3.south east) + (25pt, 0)$),
+\p3 = ($(1D.south west) + (-5pt, 0)$),
+\p{east} = (\x2, \y1), \p{west} = (\x3, \y1) in
+(1o-loop.west) -| (\p{west}) coordinate (1o-rect-west)
+-- (\p{east}) coordinate (1o-rect-east)
+|- (1o-loop.east);
+
+\loopborder{2o}{1o}
+\loopborder{3o}{2o}
+\loopborder{4o}{3o}
+
+\draw[rounded corners] let \p1 = ($(kern-inner.south) + (0pt, -5pt)$),
+\p2 = ($(1C.south east) + (25pt, 0)$),
+\p3 = ($(1BCi3.south west) + (-5pt, 0)$),
+\p{east} = (\x2, \y1), \p{west} = (\x3, \y1) in
+(1i-loop.west) -| (\p{west}) coordinate (1i-rect-west)
+-- (\p{east}) coordinate (1i-rect-east)
+|- (1i-loop.east);
+
+\loopborder{2i}{1i}
+
+% \draw let \p1 = (0-loop),
+% \p2 = (1-rect-west),
+% \p3 = (1-rect-east),
+% \p{west-end} = (\x2, \y1),
+% \p{east-end} = (\x3, \y1) in
+% (0-loop.east) -- (\p{east-end})
+% (0-loop.west) -- (\p{west-end});
+%   %% Inner loop ends
+%   \hgrids[memory]{1C}{3}{1}{3}{}
+%   \node[at=(1C1)] {$C[\ldots]$};
+%   \bracelabel{1C1.north east}{1C1.south east}{right}{$m_C$}&
+
+%   \pluseqnode{1}&
+
+%   \hgrids[memory]{1A}{1}{1}{3}{}
+%   \node[at=(1A1)] {$A[\ldots]$};
+%   \bracelabel{1A1.north west}{1A1.south west}{left}{$m_C$}&
+
+%   \node[rectangle,draw,l3,at={(0, 0)},anchor=north west, minimum height=1cm, minimum width=3cm] (1B) {$\tilde{B}$};\\
+
+%   \node[rectangle,draw,memory,at={(1.5, 0)},anchor=north west,minimum height=1.5cm, minimum width=1.5cm] (0C) {$C'$};
+%   \begin{scoped}[start chain=labels going {below=2pt of \tikzchainprevious}]
+%     \node[legend=Main Memory, memory] at (0, -1.8) {};
+%     \node[legend=L3 cache, l3] {};
+%     \node[legend=L2 cache, l2] (legend-anchor) {};
+%   \end{scoped}&
+
+%   \pluseqnode{0}&
+
+%   \node[rectangle,draw,l2,at={(0, 0)},anchor=north west, minimum height=3cm, minimum width=1cm] (0A) {$\tilde{A}$};&
+
+%   \node[rectangle,draw,l3,at={(0, 0)},anchor=north west,minimum height=1cm, minimum width=3cm] (0B) {$\tilde{B}$};\\
+% };
+% \path node[draw,above=1.8cm of 3-plus] (3-loop){3rd loop around macrokernel}
+% (3-plus) -- (2-plus) node[loop-label] (2-loop){2nd loop around macrokernel}
+% (2-plus) -- (1-plus) node[loop-label] (1-loop) {1st loop around macrokernel}
+% (1-plus) -- (0-plus) node[loop-label] (0-loop) {Macrokernel};
+
+% \draw[rounded corners] let \p1 = ($(0A.south) + (0pt, -10pt)$),
+% \p2 = ($(0B.south east) + (30pt, -5pt)$),
+% \p3 = ($(labels-end.south west) + (-5pt, -10pt)$),
+% \p{east} = (\x2, \y1), \p{west} = (\x3, \y1) in
+% (1-loop.west) -| (\p{west}) coordinate (1-rect-west)
+% -- (\p{east}) coordinate (1-rect-east)
+% |- (1-loop.east);
+
+% \loopborder{2}{1}
+% \loopborder{3}{2}
+
+% \draw let \p1 = (0-loop),
+% \p2 = (1-rect-west),
+% \p3 = (1-rect-east),
+% \p{west-end} = (\x2, \y1),
+% \p{east-end} = (\x3, \y1) in
+% (0-loop.east) -- (\p{east-end})
+% (0-loop.west) -- (\p{west-end});
+
+% \path[draw, l3] (2B1.east) ++(2.5pt, 5pt) coordinate (B-arr-start)
+% -| ($(1B.east) + (20pt, 0pt)$) node[pos=0.82,left=3pt] {Pack $B[\ldots] \to \tilde{B}$} coordinate (B-arr-down)
+% -- ++ (-10pt, 0)
+% -- ++(0pt, 2.5pt) -- ++(-5pt, -5pt) -- ++(5pt, -5pt) -- ++(0, 2.5pt)
+% -- ($(B-arr-down) + (5pt, -5pt)$)
+% |- ($(B-arr-start) + (0pt, 5pt)$);
+
+% \path[draw, l2] (1A1.east) ++(2.5pt, 5pt) coordinate (A-arr-start)
+% -| ($(0A.east) + (20pt, 0pt)$) node[pos=0.7,right=3pt] {Pack $A[\ldots] \to \tilde{A}$} coordinate (A-arr-down)
+% -- ++ (-10pt, 0)
+% -- ++(0pt, 2.5pt) -- ++(-5pt, -5pt) -- ++(5pt, -5pt) -- ++(0, 2.5pt)
+% -- ($(A-arr-down) + (5pt, -5pt)$)
+% |- ($(A-arr-start) + (0pt, 5pt)$);
+\end{tikzpicture}
+\end{document}

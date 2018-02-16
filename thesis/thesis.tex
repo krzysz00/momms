@@ -24,6 +24,8 @@
 %\singlespacing{}
 \doublespacing{}
 
+\usepackage{graphicx}
+
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,calc,fit,positioning,chains}
 
@@ -76,6 +78,9 @@
 \newcommand*{\bracelabel}[4]{\draw (#1) to[brace #3]%
   node[midway,label={[dim-label]#3:#4}] {} (#2);}
 
+\newcommand*{\packlabel}[3]{\path (#1) -- (#2)%
+  node[midway,label={#3:pack}] {};}
+
 % [style] name width height N code-for-every
 \newcommand*{\vgrids}[6][fill=white]{
   \foreach \x in {1, ..., #5} {
@@ -88,6 +93,29 @@
   \foreach \y in {1, ..., #5} {
     \node[rectangle, draw, #1,fit={($(0, -\y * #4 + #4)$) ($(#3, -\y * #4)$)}, inner sep=0] (#2\y) {};
     #6
+  }
+}
+
+% [first-style] style name width height N code-for-every
+\newcommand*{\vgridscache}[7][memory]{
+  \foreach \x in {1, ..., #6} {
+    \ifnum\x=1%
+    \node[rectangle, draw, #1 ,fit={($(#4 * \x - #4, 0)$) ($(#4 * \x, -#5)$)}, inner sep=0] (#3\x) {};
+    \else
+    \node[rectangle, draw, #2 ,fit={($(#4 * \x - #4, 0)$) ($(#4 * \x, -#5)$)}, inner sep=0] (#3\x) {};
+    \fi
+    #7
+  }
+}
+% [first-style] style name width height N code-for-every
+\newcommand*{\hgridscache}[7][memory]{
+  \foreach \y in {1, ..., #6} {
+    \ifnum\y=1%
+    \node[rectangle, draw, #1,fit={($(0, -\y * #5 + #5)$) ($(#4, -\y * #5)$)}, inner sep=0] (#3\y) {};
+    \else
+    \node[rectangle, draw, #2,fit={($(0, -\y * #5 + #5)$) ($(#4, -\y * #5)$)}, inner sep=0] (#3\y) {};
+    \fi
+    #7
   }
 }
 
@@ -243,29 +271,35 @@ Our algorithm fuses together the $B_3A_2$ and $C_3A_2$ algorithms.
 To do this, we replace the ``pack into $\tilde{B}$'' step of Algorithm \ref{alg:b3a2} (the ``outer'' algorithm) with a call to a variant of Algorithm \ref{alg:c3a2} (the ``inner'' algorithm).
 For our implementation, the inner algorithm has had its outer two loops removed, and has had its macrokernel adjusted to output in the packed format needed by the outer algorithm.
 The only change made to the outer algorithm was to adjust $n_C$ and $k_C$ so the inner algorithm would have an approximation to  $\sqrt{S_3}$ by $\sqrt{S_3}$ for its output.
-The complete algorithm is Algorithm \ref{alg:gemm3}.
+The complete algorithm is Algorithm \ref{alg:gemm3}, which is illustrated in Figure \ref{fig:gemm3}.
 
 The outer and inner algorithm were chosen over other elements of their family because, if they are run in the fused configuration, the output of the inner algorithm will be where the outer algorithm expects it --- in $L_3$ cache.
+
+\begin{figure}
+  \centering
+  \includegraphics[height=8.75in]{gemm3-picture}
+  \caption{Illustration of algorithm for \gemmt{}}
+  \label{fig:gemm3}
+\end{figure}
 \begin{algorithm}
-  \caption{Algorithm for \gemm3{}}
+  \caption{Algorithm for \gemmt{}}
   \label{alg:gemm3}
-  \textbf{TODO picture}
   \begin{algorithmic}
     \Procedure{gemm3}{$A, B, C, D$}
-    \For{$j_o \gets 0, n_{Ci}, \ldots$ \TO{} $n$}
+    \For{$j \gets 0, n_{Ci}, \ldots$ \TO{} $n$}
     \For{$p_o \gets 0, m_{Ci}, \ldots$ \TO{} $k$}
     \For{$p_i \gets 0, k_{Ci}, \ldots$ \TO{} $l$}
-    \State{pack $C[p_i:p_i+k_{Ci},j_o:j_o+n_{Ci}] \to \tilde{B_i}$}
+    \State{pack $C[p_i:p_i+k_{Ci},j_o:j_o+n_{Ci}] \to \tilde{C}$}
     \For{$i_i \gets p_0, p_0 + m_{Ci2}, \ldots$ \TO{} $p_0 + m_{Ci}$}
-    \State{pack $B[i_i:i_i+m_{Ci2},p_i:p_i+k_{Ci}] \to \tilde{A_i}$}
-    \State{$\textsc{macrokernel}(\tilde{A_i}, \tilde{B_i}, \tilde{B_o})$}
+    \State{pack $B[i_i:i_i+m_{Ci2},p_i:p_i+k_{Ci}] \to \tilde{B}$}
+    \State{$\textsc{macrokernel}(\tilde{B}, \tilde{C}, \tilde{BC})$}
     \Comment{writes in packed form}
     \EndFor{}
     \EndFor{}
-    \For{$i \gets 0, m_{Co}, \ldots$ \TO{} $m$}
+    \For{$i_o \gets 0, m_{Co}, \ldots$ \TO{} $m$}
     \For{$p' \gets p, p + k_{C2}, \ldots$ \TO{} $p + k_C$}
-    \State{pack $A[m:m+m_C,p':p'+k_{C2}] \to \tilde{A_o}$}
-    \State{$\textsc{macrokernel}(\tilde{A_o}, \tilde{B_o}, D[i:i+m_C,j:j+n_C])$}
+    \State{pack $A[m:m+m_C,p':p'+k_{C2}] \to \tilde{A}$}
+    \State{$\textsc{macrokernel}(\tilde{A}, \tilde{BC}, D[i:i+m_C,j:j+n_C])$}
     \EndFor{}
     \EndFor{}
     \EndFor{}

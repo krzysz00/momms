@@ -58,8 +58,8 @@
 (1-plus) -- (0-plus) node[loop-label] (0-loop) {Macrokernel};
 
 \draw[rounded corners] let \p1 = ($(0A.south) + (0pt, -10pt)$),
-\p2 = ($(0B.south east) + (30pt, -5pt)$),
-\p3 = ($(labels-end.south west) + (-5pt, -10pt)$),
+\p2 = ($(0B.south east) + (30pt, 0)$),
+\p3 = ($(labels-end.south west) + (-5pt, 0)$),
 \p{east} = (\x2, \y1), \p{west} = (\x3, \y1) in
 (1-loop.west) -| (\p{west}) coordinate (1-rect-west)
 -- (\p{east}) coordinate (1-rect-east)

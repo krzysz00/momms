@@ -50,8 +50,8 @@
 (2-plus) -- (1-plus) node[loop-label,anchor=west] (1-loop) {1st loop around microkernel}
 (1-plus) -- (0-plus) node[loop-label] (0-loop) {Microkernel};
 
-\draw[rounded corners] let \p1 = ($(0B12.south east) + (5pt, -5pt)$),
-\p2 = ($(2B4.south east) + (5pt, -5pt)$),
+\draw[rounded corners] let \p1 = ($(0B12.south east) + (0pt, -5pt)$),
+\p2 = ($(2B4.south east) + (0pt, -5pt)$),
 \p{east} = (\x2, \y1) in
 (0-loop.west) -| ($(labels-end.south west) + (-5pt, -5pt)$) coordinate (0-rect-west)
 -- (\p{east}) coordinate (0-rect-east)

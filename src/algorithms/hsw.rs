@@ -44,17 +44,18 @@ type McL2 = typenum::U72; //typenum::U120;
 pub type ColPM<T> = ColumnPanelMatrix<T, Nr>;
 pub type RowPM<T> = RowPanelMatrix<T, Mr>;
 
-//type U2040 = UInt<typenum::U1020, B0>;
-type L3CNc = U4080;
+type U2040 = UInt<typenum::U1020, B0>;
+type L3CNc = U2040;
 type L3CMc = typenum::U252;
 type L3CKc = typenum::U256;
 //Resident C algorithm, inner loops
 type L3CInner<T, MTA, MTB, MTC> =
       PartK<T, MTA, MTB, MTC, L3CKc,
-      PartM<T, MTA, MTB, MTC, McL2,
-      PackA<T, MTA, MTB, MTC, RowPM<T>,
-      ParallelN<T, RowPM<T>, MTB, MTC, Nr, TheRest,
-      KernelNMPackingB<T, RowPM<T>, MTB, MTC, Nr, Mr>>>>>;
+      PackB<T, MTA, MTB, MTC, ColPM<T>,
+      PartM<T, MTA, ColPM<T>, MTC, McL2,
+      PackA<T, MTA, ColPM<T>, MTC, RowPM<T>,
+      ParallelN<T, RowPM<T>, ColPM<T>, MTC, Nr, TheRest,
+      KernelNM<T, RowPM<T>, ColPM<T>, MTC, Nr, Mr>>>>>>;
 
 type L3CInnerSub<T> = Subcomputation<T, Matrix<T>, Matrix<T>, ColPM<T>>;
 pub type Dgemm3Sub = L3CInnerSub<f64>;

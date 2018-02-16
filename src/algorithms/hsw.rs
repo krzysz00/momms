@@ -2,7 +2,7 @@ extern crate typenum;
 use matrix::{ColumnPanelMatrix, RowPanelMatrix, Matrix, Subcomputation};
 use composables::{PartM, PartN, PartK, PackA, PackB,
                   ForceB, SpawnThreads, ParallelN, TheRest};
-use kern::{KernelNM};
+use kern::{KernelNM,KernelNMPackingB};
 use typenum::{UInt, B0};
 
 // BLIS's constants
@@ -40,20 +40,21 @@ pub type GotoDgemm3 =
     GotoDgemm, GotoDgemm>>;
 
     // type RootS3 = typenum::U768;
-type McL2 = typenum::U156; //typenum::U120;
+type McL2 = typenum::U72; //typenum::U120;
 pub type ColPM<T> = ColumnPanelMatrix<T, Nr>;
 pub type RowPM<T> = RowPanelMatrix<T, Mr>;
 
-type L3CNc = typenum::U780;
-type L3CKc = typenum::U156;
+//type U2040 = UInt<typenum::U1020, B0>;
+type L3CNc = U4080;
+type L3CMc = typenum::U252;
+type L3CKc = typenum::U256;
 //Resident C algorithm, inner loops
 type L3CInner<T, MTA, MTB, MTC> =
       PartK<T, MTA, MTB, MTC, L3CKc,
-      PackB<T, MTA, MTB, MTC, ColPM<T>,
-      PartM<T, MTA, ColPM<T>, MTC, L3CKc,
-      PackA<T, MTA, ColPM<T>, MTC, RowPM<T>,
-      ParallelN<T, RowPM<T>, ColPM<T>, MTC, Nr, TheRest,
-      KernelNM<T, RowPM<T>, ColPM<T>, MTC, Nr, Mr>>>>>>;
+      PartM<T, MTA, MTB, MTC, McL2,
+      PackA<T, MTA, MTB, MTC, RowPM<T>,
+      ParallelN<T, RowPM<T>, MTB, MTC, Nr, TheRest,
+      KernelNMPackingB<T, RowPM<T>, MTB, MTC, Nr, Mr>>>>>;
 
 type L3CInnerSub<T> = Subcomputation<T, Matrix<T>, Matrix<T>, ColPM<T>>;
 pub type Dgemm3Sub = L3CInnerSub<f64>;
@@ -62,13 +63,13 @@ pub type Dgemm3TmpHeight = L3CNc;
 type L3BOuter<T, MTA, MTAi, MTBi, MTC> =
       SpawnThreads<T, MTA, Subcomputation<T, MTAi, MTBi, ColPM<T>>, MTC,
       PartN<T, MTA, Subcomputation<T, MTAi, MTBi, ColPM<T>>, MTC, L3CNc,
-      PartK<T, MTA, Subcomputation<T, MTAi, MTBi, ColPM<T>>, MTC, L3CNc, // Also the Mc of that algorithm, and outer k -> inner m
+      PartK<T, MTA, Subcomputation<T, MTAi, MTBi, ColPM<T>>, MTC, L3CMc, // Also the Mc of that algorithm, and outer k -> inner m
       ForceB<T, MTA, MTAi, MTBi, ColPM<T>, Subcomputation<T, MTAi, MTBi, ColPM<T>>, MTC,
                 L3CInner<T, MTAi, MTBi, ColPM<T>>,
       PartM<T, MTA, ColPM<T>, MTC, McL2,
-      PartK<T, MTA, ColPM<T>, MTC, Kc,
+//    PartK<T, MTA, ColPM<T>, MTC, Kc,
       PackA<T, MTA, ColPM<T>, MTC, RowPM<T>,
       ParallelN<T, RowPM<T>, ColPM<T>, MTC, Nr, TheRest,
-      KernelNM<T, RowPM<T>, ColPM<T>, MTC, Nr, Mr>>>>>>>>>;
+      KernelNM<T, RowPM<T>, ColPM<T>, MTC, Nr, Mr>>>>>>>>;
 
 pub type Dgemm3 = L3BOuter<f64, Matrix<f64>, Matrix<f64>, Matrix<f64>, Matrix<f64>>;

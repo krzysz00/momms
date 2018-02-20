@@ -17,8 +17,9 @@ fn main() -> () {
 		let bindings = bindgen::Builder::default()
             .trust_clang_mangling(false)
 			.header("blis_types_wrapper.h")
+            .constified_enum_module("*")
             .clang_arg(format!("-I/{}/blis/include/blis", std::env::home_dir().unwrap().to_str().unwrap()))
-            .hide_type("FP_(ZERO|NAN|NORMAL|SUBNORMAL|INFINITE)")
+            .blacklist_type("FP_(ZERO|NAN|NORMAL|SUBNORMAL|INFINITE)")
 			.generate()
 			.expect("Unable to generate bindings");
 

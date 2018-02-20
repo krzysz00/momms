@@ -2,7 +2,7 @@ extern crate typenum;
 use matrix::{ColumnPanelMatrix, RowPanelMatrix, Matrix, Subcomputation};
 use composables::{PartM, PartN, PartK, PackA, PackB,
                   ForceB, SpawnThreads, ParallelN, TheRest};
-use kern::{KernelNM,KernelNMPackingB};
+use kern::{KernelNM};
 use typenum::{UInt, B0};
 
 // BLIS's constants

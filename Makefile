@@ -1,4 +1,4 @@
-.PHONY: build results plots
+.PHONY: build results plots only-plots
 EXPERIMENT=default
 
 SRC = $(wildcard src/*.rs) build.rs
@@ -25,7 +25,7 @@ $(DATADIR)/%.dat: $(_CARGO_OUT)% | $(DATADIR)
 results: $(addprefix $(DATADIR)/,$(addsuffix .dat,$(VARIANTS)))
 
 PLOTEXT=pdf
-plots: results $(wildcard results/plot_*.py)
+only-plots: $(wildcard results/plot_*.py)
 	./results/plot_experiment.py $(DATADIR)/gemm3.dat "A(BC)" "D += A(BC), square matrices" "N" $(DATADIR)/gemm3.$(PLOTEXT)
 	./results/plot_experiment.py $(DATADIR)/gemm3_ab_bc_kernel.dat "(AB)C" "D^T += C^T(B^TA^T), square matrices" "N" $(DATADIR)/gemm3_ab_bc_kernel.$(PLOTEXT)
 	./results/plot_experiment.py $(DATADIR)/gemm3_parallel.dat "A(BC)" "D += A(BC), square matrices, 4 cores" "N" $(DATADIR)/gemm3_parallel.$(PLOTEXT)
@@ -37,3 +37,5 @@ plots: results $(wildcard results/plot_*.py)
 	./results/plot_percent_change.py $(DATADIR)/gemm3_changes.dat "D += A(BC), square matrices" "N" $(DATADIR)/gemm3_changes.$(PLOTEXT)
 	./results/plot_percent_change.py $(DATADIR)/gemm3_ab_bc_kernel_changes.dat "D^T += C^T(B^TA^T), square matrices" "N" $(DATADIR)/gemm3_ab_bc_kernel_changes.$(PLOTEXT)
 	./results/plot_percent_change.py $(DATADIR)/gemm3_parallel_changes.dat "D += A(BC), square matrices, 4 cores" "N" $(DATADIR)/gemm3_parallel_changes.$(PLOTEXT)
+
+plots: results only-plots

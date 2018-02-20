@@ -25,11 +25,11 @@ fn test_gemm3() {
         flusher.push(0.0);
     }
 
-    for index in 1..513 {//96 {
+    for index in 1..308 {//512 {
         let mut best_time: f64 = 9999999999.0;
         let mut best_time_stock: f64 = 9999999999.0;
         let mut worst_err: f64 = 0.0;
-        let size = index * 8;//16;
+        let size = index * 16;//8;
         let (m, n, k, l) = (size, size, size, size);
 
         let n_reps = 5;
@@ -60,7 +60,7 @@ fn test_gemm3() {
             let err = util::test_d_eq_a_b_c(&mut c, &mut submat.a, &mut submat.b, &mut d);
             worst_err = worst_err.max(err);
 
-            let mut tmp: Matrix<f64> = Matrix::new_row_major(m, l);
+            let mut tmp: Matrix<f64> = Matrix::new_row_major(l, m);
             tmp.fill_zero();
             let mut submat: GotoDgemm3Sub = submat.set_c(tmp); //Subcomputation::new(a, b, tmp);
             util::flush_cache(&mut flusher);

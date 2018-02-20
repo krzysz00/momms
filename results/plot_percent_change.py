@@ -14,7 +14,7 @@ exper = pd.read_csv(argv[1], sep=' ', comment='#', float_precision="high", heade
 to_plot = exper.copy()
 to_plot["Percent change"] = to_plot["Percent change"] * 100
 to_plot["N"] = to_plot["N"].apply(lambda x: str(x) if x % 256 == 0 else '')
-ax = to_plot.plot(x="N", y="Percent change", title=argv[2], xlim=(0, exper.index[-1]), ylim=(-10, 20),
+ax = to_plot.plot(x="N", y="Percent change", title=argv[2], xlim=(0, exper.index[-1]), ylim=(-15, 15),
                   kind='bar', legend=None)
 ax.set_xlabel("N" if len(argv) == 4 else argv[3])
 ax.set_ylabel("Percent change")

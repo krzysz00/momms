@@ -4,6 +4,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import pandas as pd
 from sys import argv, stderr, exit
+from math import ceil
 
 if len(argv) < 4:
     print("{}: [data file] [algorithm name] [plot title] [[file]]".format(argv[0]),
@@ -31,12 +32,16 @@ for name, group in narrow_exper2.groupby(level="Narrowed Dim."):
     ax = fig.add_subplot(220 + i)
     group2 = group.copy()
     group2.index = group2.index.droplevel()
+    x_max = int(ceil(group2.index[-1] / 1000.0)) * 1000
     group2.plot(ax=ax, title="Narrow {}".format(name),
-                xlim=(0, group2.index[-1]), ylim=(0, 50),
+                xlim=(0, x_max), ylim=(0, 50),
                 style='.')
     ax.set_xlabel("N (large dimensions)")
     ax.set_ylabel("GFlops/s")
     i = i + 1
+
+fig.tight_layout()
+fig.subplots_adjust(top=0.9)
 
 if len(argv) < 5:
     plt.show()

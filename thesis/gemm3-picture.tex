@@ -189,7 +189,12 @@
   \bracelabel{1A1.north west}{1A1.south west}{left}{$m_C$}
   \packlabel{1A1.north east}{1A1.south east}{right}&
 
-  \node[wide-mat,l3] (1BCo) {$\tilde{BC}$};\\
+  \node[wide-mat,l3] (1BCo) {$\tilde{BC}$};
+  \begin{scoped}[start chain=labels going {below=2pt of \tikzchainprevious}]
+    \node[legend=Main Memory, memory,anchor=north west] at (0, -1.8) {};
+    \node[legend=L3 cache, l3] {};
+    \node[legend=L2 cache, l2] (legend-anchor) {};
+  \end{scoped}&\\
 };
 \path node[draw,above=1.8cm of 3o-plus] (3o-loop){3rd loop of outer algorithm}
 (3o-plus) -- (2o-plus) node[loop-label] (2o-loop){2nd loop, outer alg./3rd loop of inner}

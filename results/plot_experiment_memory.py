@@ -4,6 +4,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import pandas as pd
 from sys import argv, stderr, exit
+from math import ceil
 from memory_usage import memory_mine, memory_goto
 
 if len(argv) < 4:
@@ -24,7 +25,8 @@ exper["MOMMS BLIS algo."] = exper.apply(lambda r: memory_goto(r["m"], r["n"],
 
 to_plot = exper[["m", argv[2], "MOMMS BLIS algo."]].copy()
 to_plot.set_index("m", inplace=True)
-ax = to_plot.plot(title=argv[3], xlim=(0, to_plot.index[-1]))
+x_max = int(ceil(to_plot.index[-1] / 1000.0)) * 1000
+ax = to_plot.plot(title=argv[3], xlim=(0, x_max))
 ax.set_xlabel("N" if len(argv) == 4 else argv[4])
 ax.set_ylabel("Additional allocations (MiB)")
 if len(argv) < 6:

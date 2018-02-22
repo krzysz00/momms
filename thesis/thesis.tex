@@ -31,131 +31,37 @@
 
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,calc,fit,positioning,chains}
+\input{libgemmpicture}
 
-\definecolor{l3-color}{cmyk}{0,0.06,0.12,0}
-\definecolor{l2-color}{cmyk}{0,0.2,0.4,0}
-\definecolor{l1-color}{cmyk}{0,0.45,0.55,0}
-\definecolor{reg-color}{cmyk}{0.15,0.8,0.8,0}
-
-\tikzset{bpack/.style={to path={
-      foreach \i in {1,...,#1} { -- ++(0.5, 0) -- ++ (-0.5,-0.4) } -- (\tikztotarget) \tikztonodes
-    }},
-  bpack/.default=6,
-  apack/.style={to path={
-      foreach \i in {1,...,#1} { -- ++(0, -0.5) -- ++(0.4,0.5) } -- (\tikztotarget) \tikztonodes
-    }},
-  apack/.default=6}
-
-\tikzset{
-  label-brace/.style={to path={
-      (\tikztostart) ++(#1) -- ++(#1)
-      -- ($(\tikztotarget) + 2 *(#1)$) \tikztonodes
-      -- +($-1 *(#1)$)
-    }},
-  brace below/.style={label-brace={0, -3pt}},
-  brace above/.style={label-brace={0, 3pt}},
-  brace right/.style={label-brace={3pt, 0}},
-  brace left/.style={label-brace={-3pt, 0}}}
-
-\tikzset{
-  dim-label/.style={label distance=0pt,inner sep=0},
-}
-
-\tikzset{
-  our-arrow/.style={-{Latex[length=8pt,width=4pt]}},
-}
-
-\tikzset{
-  memory/.style={fill=white},
-  l3/.style={fill=l3-color},
-  l2/.style={fill=l2-color},
-  l1/.style={fill=l1-color},
-  regs/.style={fill=reg-color},
-  legend/.style={on chain=labels, minimum height=1ex, minimum width=1em,
-    draw, rectangle, outer sep=0, label={[label distance=3pt]right:{\small #1}}}
-}
-
-\tikzset{
-  loop-label/.style={midway, draw, rectangle},
-  square-mat/.style={rectangle,draw,fit={(0, 0) (3, -3)},inner sep=0},
-  wide-mat/.style={rectangle,draw,fit={(0, 0) (3, -1)},inner sep=0},
-  tall-mat/.style={rectangle,draw,fit={(0, 0) (1, -3)},inner sep=0}
-}
-
-\newcommand*{\bpackarr}[1]{\draw[our-arrow] ($(#1 - 0.75, -0.25)$) to[bpack] ++(0.5, -2.4);}
-\newcommand*{\apackarr}[1]{\draw[our-arrow] ($(0.25, - #1 + 0.75)$) to[apack] ++(2.4, -0.5);}
-
-\newcommand*{\bracelabel}[4]{\draw (#1) to[brace #3]%
-  node[midway,label={[dim-label]#3:#4}] {} (#2);}
-
-\newcommand*{\packlabel}[3]{\path (#1) -- (#2)%
-  node[midway,label={#3:pack}] {};}
-
-% [style] name width height N code-for-every
-\newcommand*{\vgrids}[6][fill=white]{
-  \foreach \x in {1, ..., #5} {
-    \node[rectangle, draw, #1,fit={($(#3 * \x - #3, 0)$) ($(#3 * \x, -#4)$)}, inner sep=0] (#2\x) {};
-    #6
-  }
-}
-% [style] name width height N code-for-every
-\newcommand*{\hgrids}[6][fill=white]{
-  \foreach \y in {1, ..., #5} {
-    \node[rectangle, draw, #1,fit={($(0, -\y * #4 + #4)$) ($(#3, -\y * #4)$)}, inner sep=0] (#2\y) {};
-    #6
-  }
-}
-
-% [first-style] style name width height N code-for-every
-\newcommand*{\vgridscache}[7][memory]{
-  \foreach \x in {1, ..., #6} {
-    \ifnum\x=1%
-    \node[rectangle, draw, #1 ,fit={($(#4 * \x - #4, 0)$) ($(#4 * \x, -#5)$)}, inner sep=0] (#3\x) {};
-    \else
-    \node[rectangle, draw, #2 ,fit={($(#4 * \x - #4, 0)$) ($(#4 * \x, -#5)$)}, inner sep=0] (#3\x) {};
-    \fi
-    #7
-  }
-}
-% [first-style] style name width height N code-for-every
-\newcommand*{\hgridscache}[7][memory]{
-  \foreach \y in {1, ..., #6} {
-    \ifnum\y=1%
-    \node[rectangle, draw, #1,fit={($(0, -\y * #5 + #5)$) ($(#4, -\y * #5)$)}, inner sep=0] (#3\y) {};
-    \else
-    \node[rectangle, draw, #2,fit={($(0, -\y * #5 + #5)$) ($(#4, -\y * #5)$)}, inner sep=0] (#3\y) {};
-    \fi
-    #7
-  }
-}
-
-\newcommand*{\pluseqnode}[1]{\node[at={(0, -1.5)}] (#1-plus) {\large $\pluseq$};}
-
-% [style] N N - 1 offset-right
-\newcommand*{\loopborder}[3][black]{\draw[rounded corners, color=#1]%
-  (#2-loop.west) -| ($(#3-rect-west) + (-5pt, -5pt)$) coordinate (#2-rect-west)%
-  -- ($(#3-rect-east) + (5pt, -5pt)$) coordinate (#2-rect-east)%
-  |- (#2-loop.east);}
-
-\title{\gemmt{}: Constant-workspace high-performance multiplication of three matrices}
-\author{Krzysztof A. Drewniak, Tyler M. Smith, Robert van de Gejin}
+\title{\gemmt{}: Constant-workspace high-performance multiplication of three matrices for matrix chaining}
+\author{Krzysztof A. Drewniak}
 
 \begin{document}
 \maketitle{}
 \section{Introduction}
-High-performance matrix multiplication is an important primitive for high-performance computing.
-Significant research effort, both academic (\textbf{TODO cite a few}) and commercial has gone in to optimizing this operation.
-The typical interface for such multiplication is the function \gemm{} from the Basic Linear Algebra Subprograms (BLAS) specification, which computes $C \coloneqq \beta C + \alpha AB$ for matrices $A$, $B$, and $C$ and scalars $\alpha$ and $\beta$, optionally taking the transpose of one or both of the input operands.
+The matrix chain problem asks how to efficiently parenthesize a matrix product $A_1A_2\cdots A_n$.
+$O(n \log n)$ algorithms for solving this problem are known\cite{Hu1984}, as are simpler $O(n^3)$ dynamic-programming solutions\cite{Barthels2018}
+These algorithm all assume that the only operation available is the multiplication of two matrices.
 
-In several applications, such as \textbf{TODO, I think there's a chemistry thing Devin would know about} and \textbf{TODO another application}, operations of the form $D \coloneqq \beta D + \alpha ABC$ occur.
-These often come from needing to recompose a matrix after it has been decomposed and transformed \textbf{TODO check this, give examples}.
-To perform these types of operations (which we'll summarize as $D \pluseq ABC$) performantly using \gemm{}, the programmer must allocate a temporary buffer $T$ and perform $T = BC; D \pluseq AT$ (or $T = AB; D \pluseq TC$).
-This has two drawbacks: the first is that $T$ is often a rather large matrix, which would require significant amounts of memory to store.
-In addition, reading and writing $T$ incurs a performance cost associated with reading and writing main memory, which is non-negligible for sufficiently large inputs.
+In practice, a more general version of this problem appears, where matrices can be transposed and/or inverted, or have properties such as being upper triangular\cite{Barthels2018}.
+For example, an algorithm to compute the ensemble Kalman filter\cite{Rao2017} (which computes parameters for physical systems from noisy data) requires the computation of the expression $X_i^b S_i (Y_i^b)^T R_i^{-1}$, which features one transposition and one inverse.
+Other examples of the generalized matrix chain problem include the expression $L^{-1}AL^{-H}$ (where $L$ is lower triangular and $A$ is symmetric), which arises in blocked algorithms for the two-sided triangular linear solve\cite{Parikh2017} and $\tau_u\tau_v vv^TAuu^T$ (where the $\tau_i$ are scalars and $v$ and $u$ are vectors), which appears in an algorithm for reducing a matrix to tridiagonal form\cite{Choi1995}.
 
-To combat these issue, we have developed an algorithm for \gemmt{}, that is, the computation of $D \pluseq ABC$, which does not require an entire intermediate product to be stored at one time.
+The BLAS and LAPACK libraries provide many high-performance functions that can assist in the computation of such matrix chains, such as specialized functions for the multiplication of triangular matrices (\textsc{trmm}).
+However, manually determining how to use these functions and coding against them requires expert knowledge.
+Existing high-level systems, such at Matlab and Julia, which are commonly used by non-experts, generally compute the expressions in a naive way, such as proceeding from left to right, which often yields suboptimal performance.
+Systems such as Linnea\cite{Barthels2017} have emerged recently that attack the generalized matrix chain problem and automatically generate a high-performance program for a given expression.
+
+Returning to the example matrix chains above, we can observe that they often contain the multiplication of three matrices as a subproblem, often after some preprocessing such as an inverson or an outer product.
+The general form of such a problem is $D \coloneqq \alpha ABC + \beta D$, which we will summarize as $D \pluseq ABC$ and denote \gemmt{}, by analogy with the notation for general matrix-matrix multiply (\gemm{}) in the BLAS library.
+The only approach available to this subproblem with current methods is to paranthesize the expression $ABC$ and perform a pair of matrix multiplications, storing a result in a temporary matrix $T$.
+This method two drawbacks: the first is that $T$ is often rather large and requires significant amounts of storage space.
+In addition, if $T$ is sufficiently large, reading and writing it incurs a non-negligible performance cost associated with reading and writing main memory.
+
+To combat these issues, we have developed an algorithm for \gemmt{} which does not require an entire intermediate product to be stored at one time.
 Our algorithm takes advantage of the blocking performed by modern \gemm{} implementations to only store a cache-sized block of $BC$ at any given time.
 By doing so, we perform the multiplication in $O(1)$ additional space and maintain performance comparable with a pair of \gemm{} calls.
+Our algorithm can therefore be used as a primitive in generalized matrix chain solvers (or hand-written matrix code) to reduce memory usage, the complexity of the solutino, and potentially provide a slight performance increase.
 
 \section{Background}
 \subsection{High-Performance \gemm{}}
@@ -163,10 +69,11 @@ Before discussing our approach to \gemmt{}, it is important to review the implem
 High-performance \gemm{} algorithms operate by repeatedly reducing the problem to a series of multiplications of blocks from the inputs.
 These blocks are sized to allow an operand to one of these subproblems to utilize a level of the CPU's cache effectively and prevent it from being evicted from cache durinf further blocking.
 The multiple reductions are required to effectively utilize all levels of the cache.
+These steps are necessary because of the memory hierarchy of modern CPU, where there are multiple (typically) three levels of cache, which increase in size but decrease in speed, between registers and main memory.
 
 There are two specialized primitives that appear in high-performance \gemm{}: the \emph{microkernel} and \emph{macrokernel}.
 The microkernel is a highly-tuned, hand-written function (almost always implemented in assembly) that multiplies an $m_R \times k$ panel of $A$ by an $k \times n_R$ panel of $B$ to update an $m_R \times n_R$ region of $C$, which is computed in registers and written to memory.
-$m_R$ and $n_R$ are constants based on the microarchitecture of the CPU, which can be derived analytically\cite{Low2016} or by autotuning\textbf{TODO cite someone. ATLAS?}.
+$m_R$ and $n_R$ are constants based on the microarchitecture of the CPU, which can be derived analytically\cite{Low2016} or by autotuning\cite{Whaley1998}.
 
 In order for the microkernel to operate efficiently, the panels it operates on must be loaded into the system's caches beforehand.
 In addition, he data within the panels must be arranged so that the microkernel's memory reads will operate contiguously.
@@ -202,7 +109,8 @@ Since the loops that perform $C' \pluseq \tilde{A}\tilde{B}$ are common across a
 \end{algorithm}
 
 Many high-performance \gemm{} implementations in use today are based on Goto's algorithm\cite{Goto2008}.
-One such implementation(\textbf{algorithm?}), which we have based our work on, is BLIS\textbf{TODO cite}, presented as Algorithm \ref{alg:blis}..
+One such implementation, which we have based our work on, is BLIS\cite{VanZee2016}.
+The BLIS algorithm, which is an elaboration on Goto's algorithm, is presented as Algorithm \ref{alg:blis}..
 It brings elements of $B$ into the $L3$ (and later $L1$) cache, while storing elements of $A$ in $L2$.
 \begin{algorithm}
   \caption{The BLIS algorithm}
@@ -291,6 +199,33 @@ This reasoning shows that the BLIS algorithm achieves its best performance when 
 
 \section{Algorithm}
 For our discussion of \gemmt{}, we well be considering the operation $D \pluseq ABC$, where $A$ is $m \times k$, $B$ is $k \times l$ and $C$ is $l \times n$.
+
+To derive our algorithm for \gemmt{}, we began by considering the computation of $\textsc{gemm}(A, BC)$ with the BLIS algorithm and attempting to find ways to not need all of $BC$ at once.
+We observed that elements of $BC$ are not needed until that matrix has been partitioned both horizontaly and vertically, creating a block of $BC$ thas is packed into $L3$ cache.
+This led us to consider how we might compute a $k_C \times l$ by $l \times n_C$ block of $BC$ and pack it into $\tilde{BC}$ efficiently.
+
+Looking again at the BLIS algorithm, but this time considering the computation of our block, we noticed that the outer loop (over $n$) could be removed for this ``inner'' computation, since our matrices could never be larger than $n_C$.
+Simply nesting two copies of the BLIS algorithm, however, would cause issues, even with one loop removed.
+One such issue was that there was no guarantee that the inner algorithm (which computed blocks of $BC$) would place its results into cache.
+Another difficulty came from the fact that we would still need to pack blocks of $BC$ into $\tilde{BC}$, incurring a cost in memory operations we hoped to avoid.
+
+Fortunately, these problems were resolvable.
+The microkernel could be made to write in the packed format, eliminating a large number of memory operations, by informing it that the output matrix was row-major with rows of width $n_R$.
+To solve the cache-residency issue, we observed that, if we used an $n_C$ value that was half of the one from BLIS, both a packed block of $C$ and the output block of $BC$ could reside in the $L3$ cache simultaneously.
+This change does not break the assumptions of the BLIS algorithm, as $n_C/2$ is still much larger than $k_C$ or $m_C$ in practice.
+
+One possible issue with this approach is that the inner computation is a panel-matrix multiply, that is, the $m$ dimension is small, and $\tilde{C}$ would see little reuse.
+This likely did have a performance impact, though it turned out to be small in practice.
+
+There was one other adjustments to the BLIS algorithm's constants than needed to be made to enable the fusion to proceed efficiently.
+In some cases, the BLIS microkernel's loops have a final iteration that considers fewer than $m_R$ rows (or $n_R$ columns) because not all matrices have sizes divisible by $m_R$ and $n_R$.
+Computation of this fridge iteration can have a performance impact, as special processing is required to account for the unusual sizes.
+In the fused BLIS algorithm, the value of $k_C$ (which is used for partitioning in the outer algorithm) becomes the $m$ dimension of the problem computed by the inner algorithm.
+If $k_C$ is not divisible by $m_R$, we must (at the cost of slightly less optimal cache usage) reduce it slightly so that it is a multiple of $m_R$, thus ensuring we do not incur performance penalties every time we compute $\tilde{BC}$.
+However, $l_C$, which is the inner algorithm's version of $k_C$, can be kept at the BLIS value, as these considerations are not relevant there.
+
+The algorithm that resulted from this derivation is Algorithm \ref{alg:gemm3}, which is illustrated in Figure \ref{fig:gemm3}.
+
 \begin{figure}
   \centering
   \includegraphics[height=8.75in]{gemm3-picture}
@@ -322,27 +257,11 @@ For our discussion of \gemmt{}, we well be considering the operation $D \pluseq 
   \end{algorithmic}
 \end{algorithm}
 
-Our algorithm computes $D \pluseq A \cdot (BC)$ by replacing the packing of $\tilde{BC}$ in the BLIS algorithm for this problem by another copy of the BLIS algorith, which computes $\tilde{BC} = B[\ldots]C[\ldots]$.
-The second copy, known as the inner algorithm, has its outermost loop (over $n$) removed, as the output must be at most $k_C \times n_C$.
-This algorithm is illustrated in Figure \ref{fig:gemm3} and the pseudocode is Algorithm \ref{alg:gemm3}.
-
-The constants ($m_C, k_C, l_C$ and $n_C$) in the \gemmt{} algorithm are the BLIS constants with some alterations.
-First, it may be necessary for $k_C$ (which appears in the outer algorithm) to be somewhat different from $l_C$ in the inner algorithm.
-This is because, to achieve performance, we need $k_C$ (which is the $m$ dimension for the inner algorithm) to be evenly divisible by $m_R$, to limit the number of cases where the microkernel cannot be used due to overhang.
-To achieve this goal, $l_C$ is kept at the model's value for $k_C$ in the BLIS algorithm, while the $k_C$ for \gemmt{} is decreased just enough to make it divisible for $m_C$.
-
-Second, we want both $\tilde{C}$ and $\tilde{BC}$ to be resident in the $L3$ cache.
-The easiest way to achieve this is to set $n_C$ for \gemmt{} to be half of what it is in the BLIS algorithm.
-This still retains the property that $n_C \gg m_C, k_C, l_C$ while allowing all the buffers that should be in L3 to coexist.
-
-This algorithm specifically computes $D \pluseq A(BC)$.
-In some cases, it may be a better idea to compute $D \pluseq (AB)C$.
-Formulating another nested-BLIS algorithm for that problem will not work, as the block being computed is the small $m_C \times k_C$ block, which will have to recomputed many times due to the iteration over $k$ that surrounds it.
-However, we can apply algorithm to problems of this form by observing that $D \pluseq (AB)C$ can be transformed to $D^T \pluseq C^T(B^TA^T)$.
-This transformation can be done at almost no cost by interpreting column-major inputs as row-major or vice-versa.
-
-In the \gemmt{} algorithm we present, the inner algorithm writes in the packed format.
-This can easily be achieved by informing the microkernel that ``$C$'' is a row-major matrix with leading dimension $n_R$.
+It should be noted that this algorithm computes $D \pluseq A(BC)$.
+In some cases, it is much more efficient (on account of the dimensions of the inputs) to compute $D \pluseq (AB)C$ instead.
+Attempting to derive an algorithm for that problem directly does not work, as the block $\tilde{AB}$ in $L2$ cache would need to be recomputed multiple times for each iteration of the loop over $n$, and would also not see much reuse.
+Fortunately, we can transform problems of this form to the equivalent problem $D^T \pluseq C^T(B^TA^T)$.
+This transformation can be performed at effectively no cost by re-interpreting the memory the matrices are stored in (treating a row-major matrix as column-major and vice-versa).
 
 \section{Experiments and Results}
 To test our algorithm's performance, we implemented both it and the BLIS algorithm in the Multilevel Optimization for Matrix Multiply Sandbox (MOMMS), which wes developed for\cite{SmithDiss2017}.

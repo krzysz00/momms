@@ -335,24 +335,24 @@ The computed additional (excluding inputs and outputs) memory consumption of bot
 From the figures in the previous section, it is clear that \gemmt{} attains similar performance to a pair of \gemm{} calls with significantly lower memory usage.
 However, it is important to dissect these performance results and determine why they have arisen.
 
-For the square case, we can observe that, for most of the 1000s and 2000s, the pair of \gemm{} calls has somewhat increased performance, but that the \gemmt{} algorithm is comparably or even more performant afterwards.
+For the square case, which was shown in Figure \ref{fig:bc_square}, we can observe that, for most of the 1000s and 2000s, the pair of \gemm{} calls has somewhat increased performance, but that the \gemmt{} algorithm is comparably or even more performant afterwards.
 The higher performance for the \gemm{} calls arises from the lack of reuse of $\tilde{C}$ implied by the $252 \times l \cdot l \times n$ input to the inner algorithm for \gemmt{}.
 Specifically, the first loop around the macrokernel in that algorithm always iterates at most four times, compared to the unbounded number of iterations in a call to \gemm{} to compute $BC$.
 However, around when the temporary grows to 64 MB, the memory cost of writing it to memory becomes large enough that the performance of two \gemm{} calls begins to drop to and eventually falls below the performance of our \gemmt{} algorithm.
 This shows that our approach, in addition to the memory savings, provides performance benefits for large matrix multiplications.
 
-For small input sizes ($N < 512$), there is a significant performance benefit attained by the \gemmt{} algorithm.
+For small input sizes ($N < 512$), there is often a significant performance benefit attained by the \gemmt{} algorithm.
 This performance improvement arises from the additional packing step that a pair of \gemm{} calls must perform, which has a non-negligible cost for these inputs, even if both the packed and unpacked data remain resident in the $L3$ cache.
 
 Similar trends can be seen in Figure \ref{fig:ab_square}, which shows the results for $D \pluseq (AB)C$, implemented as $D^T \pluseq C^T(B^TA^T)$.
 However, the pair of \gemm{} calls retains higher performance for a longer period of time on this workload.
 This occurs because packing from row-major matrices to row-major packed buffers, which is something that occurs more frequently in this experiment, is much more amenable to the CPU's prefetcher than packing from column-major matrices.
 
-The rectangular results also require examination.
+The rectangular results from Figure \ref{fig:bc_rectangles} also require examination.
 When $l$ is small, the \gemmt{} algorithm performs better on all inputs, as the memory-writing overhead in the BLIS algorithm remains, while the advantage of reuse in computing $BC$ is reduced (because the $k$ dimension is very narrow).
 When $m$ is small, the costs of low $L3$ reuse are imposed at least once on both algorithms, decreasing the performance of both.
 
-When $n$ is narrow, the problem is effectively convered to a series of several matrix-vector multiplications, which cannot achieve high performance with either algorithm.
+When $n$ is narrow, the problem is effectively converted to a series of several matrix-vector multiplications, which cannot achieve high performance with either algorithm.
 For narrow $k$, the outer problem is an outer product, while the inner problem is a panel-matrix multiply (wide matrix times square matrix).
 These shapes do not generally promote data reuse within the BLIS algorithm.
 The eventually increased performance of \gemmt{} with $k = 9$ is due to the lowered number of memory operations that algorithm performs, since memory operations dominate this computation.

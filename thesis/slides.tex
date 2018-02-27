@@ -1,0 +1,341 @@
+\documentclass{beamer}
+\usepackage{mathtools,amsthm,bm}
+\DeclarePairedDelimiter\ceil{\lceil}{\rceil}
+\DeclarePairedDelimiter\floor{\lfloor}{\rfloor}
+
+\usepackage[noend]{algpseudocode}
+\usepackage{algorithm}
+\newcommand*\Let[2]{\State #1 $\gets$ #2}
+\newcommand*{\TO}{\textbf{to}}
+% since gemm3 can't be a matro name
+\newcommand*{\pluseq}{\mathrel{{+}{=}}}
+\newcommand*{\gemmt}{{\textsc{gemm3()}}}
+\newcommand*{\gemm}{{\textsc{gemm()}}}
+
+\usepackage{hyperref}
+
+\usepackage{graphicx}
+\usepackage{adjustbox}
+
+\usepackage{tikz}
+\usetikzlibrary{matrix,arrows.meta,calc,fit,positioning,chains,shapes}
+\input{libgemmpicture}
+
+\tikzset{
+  invisible/.style={opacity=0,text opacity=0},
+  visible on/.style={alt={#1{}{invisible}}},
+  alt/.code args={<#1>#2#3}{%
+    \alt<#1>{\pgfkeysalso{#2}}{\pgfkeysalso{#3}} % \pgfkeysalso doesn't change the path
+  },
+  explanation/.style={visible on=<2->},
+  graph-pic/.style={anchor=north west, at={(0, 0)},inner sep=0pt}
+}
+
+\useoutertheme{infolines}
+\setbeamertemplate{navigation symbols}{}
+
+\title[\gemmt{}]{\gemmt{}: Constant-workspace high-performance multiplication of three matrices for matrix chaining}
+\author[Drewniak]{Krzysztof A. Drewniak}
+\institute[UT Austin]{The University of Texas at Austin}
+\date[]{Date TBD}
+
+\begin{document}
+\begin{frame}[plain]
+  \titlepage{}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Outline}
+  \tableofcontents{}
+\end{frame}
+
+\section[Introduction]{Introduction}
+\begin{frame}
+  \frametitle{Matrix chaining problem}
+  \begin{itemize}
+  \item Problem: compute $A_1A_2\cdots A_n$ efficiently, $A_i$ matrices
+  \item Where do the parentheses go?
+  \item $O(n \log n)$ algorithm, also $O(n^3)$ with dynamic programming
+  \item Fewer flops $\to$ more performance?
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Generalized matrix chaining}
+  \begin{itemize}
+  \item In reality --- transposes, inverses, properties
+  \item Ex:
+    \begin{description}
+    \item[Ensemble Kalman filter] $X_i^b S_i (Y_i^b)^T R_i^{-1}$
+    \item[Tridiagonalization] $\tau_u\tau_vvv^TAuu^T$
+    \item[Two-sided triangular solve] $L^{-1}AL^{-H}$ ($L$ lower triangular)
+    \end{description}
+  \item Performance with BLAS/LAPACK -- must be expert
+  \item Less performance with  Matlab, numpy, etc. (left-to-right)
+  \item Linnea: expression $\to$ BLAS calls automagically
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{\gemmt{} --- Why bother?}
+  \begin{itemize}
+  \item Examples again:
+    \begin{itemize}
+    \item $\bm{X_i^b S_i (Y_i^b)^T}R_i^{-1}$
+    \item $\tau_u\tau_v \bm{vv^TAuu^T}$
+    \item$\bm{L^{-1}A(L^{-1})^H}$ ($L$ lower triangular)
+    \end{itemize}
+  \item All multiply three matrices as a subproblem
+  \item (Notation: $D \pluseq ABC$ and \gemmt{})
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{\gemmt{} --- Why a new algorithm?}
+  \begin{itemize}
+  \item Current approach: parentheses, multiply twice, store temporary $T$
+  \item $T$ often eats memory
+  \item Writing/reading $T$ can hit your performance
+  \item We can do better!
+  \item Use how \gemm{} works to nest computations
+  \item $O(1)$ extra memory, maybe more performance
+  \end{itemize}
+\end{frame}
+
+\section[\gemm{}]{High-Performance \gemm{}}
+\begin{frame}
+  \frametitle{Memory hierarchy}
+  \begin{tikzpicture}[read-point/.style={single arrow,minimum height=0.7cm, minimum width=0.1cm, draw, shape border rotate=270}]
+    \matrix [matrix of nodes, nodes={draw}, row sep=4pt] {
+      |[memory, minimum width=8cm]| Memory\\
+      |[read-point]|\\
+      |[l3, minimum width=4cm]| $L3$\\
+      |[read-point]|\\
+      |[l2, minimum width=1.5cm]| $L2$\\
+      |[read-point]|\\
+      |[l1, minimum width=0.9cm]| $L1$\\
+      |[read-point]|\\
+      |[regs, minimum width=0.2cm, label=right:Registers]|\\
+    };
+  \end{tikzpicture}
+\end{frame}
+
+\begin{frame}
+  \frametitle{\gemm{}: The kernels}
+  \begin{adjustbox}{max size={!}{0.87\textheight},center}
+  \begin{tikzpicture}
+    \input{macrokernel-picture}
+  \end{tikzpicture}
+  \end{adjustbox}
+\end{frame}
+
+\begin{frame}
+  \frametitle{\gemm{}: The algorithm}
+  \begin{adjustbox}{max size={!}{0.87\textheight},center}
+  \begin{tikzpicture}
+    \input{blis-picture}
+  \end{tikzpicture}
+  \end{adjustbox}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Picking constants: $m_R, n_R$}
+  \begin{itemize}
+  \item Determine microkernel
+  \item Based on microarchitecture --- register width, FMA properties
+  \item We're reusing BLIS's work
+  \item Can swap $m_R$ and $n_R$
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Picking constants: $k_C$}
+  Placing memory in cache: [tag][set \#][offset in line]
+
+  \begin{equation*}
+    m_rk_cS_{elem} = C_AC_{L1}N_{L1} \qquad n_rk_CS_{elem} = C_BC_{L1}N_{L1}
+  \end{equation*}
+
+  \begin{columns}
+    \begin{column}{0.1\textwidth}
+      Cache:
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \centering
+      \begin{tikzpicture}
+        \matrix (labels) [matrix of math nodes, ampersand replacement=\&] {
+          A \& A \& B \& B\\
+          A \& B \& B \& C\\
+        };
+        \node[draw, ellipse, fit={(labels-1-1) (labels-2-4)}] (labels-border) {};
+        \node[right=5pt of labels-border] {$\ldots$};
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.25\textwidth}
+      \begin{equation*}
+        C_A + C_B + 1 \leq W_{L1}
+      \end{equation*}
+    \end{column}
+  \end{columns}
+  \begin{center}
+    Maximizing $k_C$ improves performance
+  \end{center}
+
+  \begin{align*}
+    C_B &= \ceil*{\frac{n_Rk_CS_{elem}}{N_{L1}C_{L1}}}\\
+        &= \ceil*{\frac{n_R}{m_R}C_A}\\
+    C_A &\leq \floor*{\frac{W_{L1} - 1}{1 + \frac{n_R}{m_R}}}
+  \end{align*}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Picking constants: $m_C$ and $n_C$}
+  \begin{itemize}
+  \item For $m_C$: reserve ways for $B$ and $C$
+  \item Then take all you can
+  \item $n_C$, leave out what architecture requires, then divide
+  \item L3 is very big, tuning is much less needed
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Data reuse}
+  \begin{itemize}
+  \item Every loop reads \emph{something} repeatedly
+  \item Relevant things: packed blocks --- making them takes time
+  \item Packed block reuse problems:
+    \begin{itemize}
+    \item $m$ small --- low time between remakes of $\tilde{B}$
+    \item $n$ small --- same for $\tilde{A}$
+    \item $k$ tiny --- microkernel doesn't do much, small caches
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\section[\gemmt{}]{The \gemmt{} algorithm}
+\begin{frame}
+  \frametitle{Key concept of the algorithm}
+  \begin{itemize}
+  \item We want $D \pluseq ABC$, (dimensions: $m, k, l, n$ in order)
+  \item $BC$ first needed in packing step
+  \item Compute a block then
+  \item Have \gemm{} algorithm, but...
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{The tricky bits}
+  \begin{table}
+    \centering
+    \begin{tabular}{l|l}
+      Problem&Solution\\ \hline \hline
+      Redundant loop over $n$ ($n \leq n_C$) & Remove it\\
+      Packing output wastes space/time & Tweak microkernel params\\
+      $\tilde{C}$ fights $\tilde{BC}$ in $L3$ & Halve $n_C$\\
+      Low $\tilde{C}$ reuse & Low impact in practice\\
+      $m_R \nmid k_C$, leaving fringe & Shrink $k_C$ slightly\\
+    \end{tabular}
+    \caption{Tweaks needed to make \gemm{} fusion work}
+    \label{tab:gemm3-issues}
+  \end{table}
+\end{frame}
+
+\begin{frame}
+  \frametitle{The algorithm}
+  \begin{figure}
+    \centering
+    \includegraphics[height=0.875\textheight]{gemm3-picture}
+    \caption{Illustration of the \gemmt{} algorithm}
+    \label{fig:gemm3}
+\end{figure}
+\end{frame}
+
+\begin{frame}
+  \frametitle{$D \pluseq (AB)C$}
+  \begin{itemize}
+  \item Putting parentheses there sometimes better
+  \item Deriving directly doesn't work
+    \begin{itemize}
+    \item Multiple recomputations of $\tilde{AB}$
+    \end{itemize}
+  \item However, $D \pluseq (AB)C \Leftrightarrow D^T \pluseq C^T(B^TA^T)$
+  \end{itemize}
+\end{frame}
+
+\section[Results]{Experiments and Results}
+\begin{frame}
+  \frametitle{Implementation details}
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \begin{itemize}
+      \item Multilevel Optimization of Matrix Multiply Sandbox (MOMMS)
+      \item Extended to support three matrices
+      \item Implement both \gemmt{} and BLIS algorithm
+      \item BLIS algorithm port performs like BLIS
+      \item Experiments on Haswell machine from UT lab
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{table}
+        \centering
+        \begin{tabular}{l|c c}
+          &\gemmt{}&BLIS algorithm\\ \hline
+          $m_C$&72&72\\
+          $k_C$&252&256\\
+          $l_C$&256&\\
+          $n_C$&2040&4080\\
+        \end{tabular}
+        \caption{Constants for Haswell CPUs}
+        \label{tab:haswell-consts}
+      \end{table}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Experiments}
+  \begin{enumerate}
+  \item $D \pluseq A(BC)$, square matrices
+    \begin{itemize}
+    \item Inputs column-major, outputs row-major for fairness
+    \end{itemize}
+  \item $D^T \pluseq C^T(B^TA^T)$, square matrices
+    \begin{itemize}
+    \item After transpose, all row major
+    \end{itemize}
+  \item $D \pluseq A(BC)$, rectangles (one dimension small)
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Workspace usage, square matrices}
+  \begin{tikzpicture}
+    \node[graph-pic] (graph) {\includegraphics[height=0.9\textheight]{../results/earwig2/gemm3_memory}};
+  \end{tikzpicture}
+\end{frame}
+
+\begin{frame}
+  \frametitle{$D \pluseq A(BC)$, square matrices}
+  \begin{tikzpicture}
+    \node[graph-pic] (graph) {\includegraphics[height=0.9\textheight]{../results/earwig2/gemm3}};
+    \node[explanation, right=1.5cm of graph.west] {\small Less packing};
+    \node[explanation, below left=1.6cm and 3pt of graph.north,anchor=north] {\small Suboptimal shape};
+    \node[explanation, below left=2cm and 1cm of graph.north east, anchor=east] {\small Memop overhead};
+  \end{tikzpicture}
+\end{frame}
+
+\begin{frame}
+  \frametitle{$D \pluseq (AB)C$, square matrices}
+  \begin{tikzpicture}
+    \node[graph-pic] (graph) {\includegraphics[height=0.9\textheight]{../results/earwig2/gemm3_ab_bc_kernel}};
+    \node[explanation, at=(graph.center)] {\small Similar trends, row-major helps BLIS};
+  \end{tikzpicture}
+\end{frame}
+
+\begin{frame}
+  \frametitle{$D \pluseq A(BC)$, rectangular matrices}
+  \begin{tikzpicture}
+    \node[graph-pic] (graph) {\includegraphics[height=0.9\textheight]{../results/earwig2/gemm3_rectangles}};
+  \end{tikzpicture}
+\end{frame}
+\end{document}

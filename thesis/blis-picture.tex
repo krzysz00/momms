@@ -37,7 +37,7 @@
   \node[at=(1A1)] {$A[\ldots]$};
   \bracelabel{1A1.north west}{1A1.south west}{left}{$m_C$}&
 
-  \node[l3,wide-mat] (1B) {$\tilde{B}$};\\
+  \node[l3,wide-mat] (1B) {$\widetilde{B}$};\\
 
   \node[rectangle,draw,memory,at={(1.5, 0)},anchor=north west,minimum height=1.5cm, minimum width=1.5cm] (0C) {$C'$};
   \begin{scoped}[start chain=labels going {below=2pt of \tikzchainprevious}]
@@ -48,9 +48,9 @@
 
   \pluseqnode{0}&
 
-  \node[l2,tall-mat,fit={(0, 0) (1.5, -1.5)}] (0A) {$\tilde{A}$};&
+  \node[l2,tall-mat,fit={(0, 0) (1.5, -1.5)}] (0A) {$\widetilde{A}$};&
 
-  \node[l3,wide-mat,  wide-mat/.style={rectangle,draw,fit={(0, 0) (3, -1.5)},inner sep=0},] (0B) {$\tilde{B}$};\\
+  \node[l3,wide-mat,  wide-mat/.style={rectangle,draw,fit={(0, 0) (3, -1.5)},inner sep=0},] (0B) {$\widetilde{B}$};\\
 };
 \path node[draw,above=1.8cm of 3-plus] (3-loop){3rd loop around macrokernel}
 (3-plus) -- (2-plus) node[loop-label] (2-loop){2nd loop around macrokernel}
@@ -77,14 +77,14 @@
 (0-loop.west) -- (\p{west-end});
 
 \path[draw, l3] (2B1.east) ++(2.5pt, 5pt) coordinate (B-arr-start)
--| ($(1B.east) + (20pt, 0pt)$) node[pos=0.82,left=3pt] {Pack $B[\ldots] \to \tilde{B}$} coordinate (B-arr-down)
+-| ($(1B.east) + (20pt, 0pt)$) node[pos=0.82,left=3pt] {Pack $B[\ldots] \to \widetilde{B}$} coordinate (B-arr-down)
 -- ++ (-10pt, 0)
 -- ++(0pt, 2.5pt) -- ++(-5pt, -5pt) -- ++(5pt, -5pt) -- ++(0, 2.5pt)
 -- ($(B-arr-down) + (5pt, -5pt)$)
 |- ($(B-arr-start) + (0pt, 5pt)$);
 
 \path[draw, l2] (1A1.east) ++(2.5pt, 5pt) coordinate (A-arr-start)
--| ($(0A.east) + (20pt, 0pt)$) node[pos=0.7,right=3pt] {Pack $A[\ldots] \to \tilde{A}$} coordinate (A-arr-down)
+-| ($(0A.east) + (20pt, 0pt)$) node[pos=0.7,right=3pt] {Pack $A[\ldots] \to \widetilde{A}$} coordinate (A-arr-down)
 -- ++ (-10pt, 0)
 -- ++(0pt, 2.5pt) -- ++(-5pt, -5pt) -- ++(5pt, -5pt) -- ++(0, 2.5pt)
 -- ($(A-arr-down) + (5pt, -5pt)$)

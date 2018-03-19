@@ -37,7 +37,7 @@
 \title[\gemmt{}]{\gemmt{}: Constant-workspace high-performance multiplication of three matrices for matrix chaining}
 \author[Drewniak]{Krzysztof A. Drewniak}
 \institute[UT Austin]{The University of Texas at Austin}
-\date[]{Date TBD}
+\date[]{April 13, 2018}
 
 \begin{document}
 \begin{frame}[plain]
@@ -254,10 +254,7 @@
   \frametitle{$D \pluseq (AB)C$}
   \begin{itemize}
   \item Putting parentheses there sometimes better
-  \item Deriving directly doesn't work
-    \begin{itemize}
-    \item Multiple recomputations of $\tilde{AB}$
-    \end{itemize}
+  \item Deriving directly doesn't work --- bad shape
   \item However, $D \pluseq (AB)C \Leftrightarrow D^T \pluseq C^T(B^TA^T)$
   \end{itemize}
 \end{frame}
@@ -342,9 +339,9 @@
 \begin{frame}
   \frametitle{Acknowledgments}
   \begin{itemize}
-  \item Dr.\ Robert van de Geijn, for advising and providing the inspiration for this work
+  \item Prof.\ Robert van de Geijn, for advising and providing the inspiration for this work
   \item Dr.\ Tyler Smith, for writing MOMMS and helping with algorithm design
-  \item Dr.\ Tze Meng Low,  for performance and paper-writing advice
+  \item Prof.\ Tze Meng Low,  for performance and paper-writing advice
   \item NSF grant \textbf{TODO NNNNNNN} for funding
   \end{itemize}
 \end{frame}

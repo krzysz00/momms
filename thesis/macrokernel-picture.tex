@@ -1,6 +1,8 @@
 \matrix (loops)[column sep=0.2cm, row sep=5.5ex] {
   \vgrids[memory]{2C}{0.6}{3}{6}{}
   \bracelabel{2C1.north west}{2C1.north east}{above}{$n_R$}
+  \bracelabel{2C1.south west}{2C5.south east}{below}{$n_C$}
+  \bracelabel{2C1.north west}{2C1.south west}{left}{$m_C$}
   \path (2C1.north west) -- (2C5.north east) node[midway,label={above:$C'$}] {};&
 
   \pluseqnode{2}&
@@ -8,11 +10,11 @@
   \hgrids[l2]{2A}{3}{1}{3}{\apackarr{\y}}
   \bracelabel{2A1.north west}{2A1.south west}{left}{$m_R$}
   \bracelabel{2A3.south west}{2A3.south east}{below}{$k_C$}
-  \path (2A1.north west) -- (2A1.north east) node[midway,label={above:$\tilde{A}$}] {};&
+  \path (2A1.north west) -- (2A1.north east) node[midway,label={above:$\widetilde{A}$}] {};&
 
   \vgrids[l3]{2B}{1}{3}{4}{\bpackarr{\x}}
   \bracelabel{2B1.north west}{2B1.north east}{above}{$n_R$}
-  \path (2B1.north west) -- (2B4.north east) node[midway, label={above:$\tilde{B}$}] {};\\
+  \path (2B1.north west) -- (2B4.north east) node[midway, label={above:$\widetilde{B}$}] {};\\
 
   \foreach \y in {1,...,3} {
     \node[rectangle, draw, fit={(2, -\y + 1) (3, -\y)}, inner sep=0] (1C\y) {};

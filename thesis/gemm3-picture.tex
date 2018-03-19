@@ -12,96 +12,96 @@
 \begin{document}
 \begin{tikzpicture}
 \matrix (loops)[column sep=0.2cm, row sep=5.5ex] {
-  \node[square-mat] (3D) {$D[\ldots]$};
-  \bracelabel{3D.north west}{3D.north east}{above}{$n_{Ci}$}
-  \draw[dashed] (3D.north east) -- ++(0.75, 0)
-  (3D.south east) -- ++(0.75, 0);&
+  \node[square-mat] (3G) {$G[\ldots]$};
+  \bracelabel{3G.north west}{3G.north east}{above}{$n_{C}$}
+  \draw[dashed] (3G.north east) -- ++(0.75, 0)
+  (3G.south east) -- ++(0.75, 0);&
 
   \pluseqnode{3o}&
 
-  \node[square-mat,memory] (3A) {\Large $A$};&
+  \node[square-mat,memory] (3D) {\Large $D$};&
 
-  \node[square-mat,memory,dotted] (3BC) {$(BC)[\ldots]$};
-  \bracelabel{3BC.north west}{3BC.north east}{above}{$n_{C}$}
-  \draw[dashed] (3BC.north east) -- ++(0.75, 0)
-  (3BC.south east) -- ++(0.75, 0);\\
+  \node[square-mat,memory,dotted] (3EF) {$(EF)[\ldots]$};
+  \bracelabel{3EF.north west}{3EF.north east}{above}{$n_{C}$}
+  \draw[dashed] (3EF.north east) -- ++(0.75, 0)
+  (3EF.south east) -- ++(0.75, 0);\\
 
 
-  \node[square-mat,memory] (2D) {$D[\ldots]$};&
+  \node[square-mat,memory] (2G) {$G[\ldots]$};&
 
   \pluseqnode{2o}&
 
-  \vgrids[memory]{2A}{1}{3}{2}{}
-  \node[at=(2A1),rotate=-90] {$A[\ldots]$};
-  \bracelabel{2A1.south west}{2A1.south east}{below}{$k_{C}$}&
+  \vgrids[memory]{2D}{1}{3}{2}{}
+  \node[at=(2D1),rotate=-90] {$D[\ldots]$};
+  \bracelabel{2D1.south west}{2D1.south east}{below}{$k_{C}$}&
 
-  \hgrids[memory,dotted]{2BCo}{3}{1}{3}{}
-  \node[at=(2BCo1)] {$BC[\ldots]$};
-  \bracelabel{2BCo1.north east}{2BCo1.south east}{right}{$k_C$}\\
+  \hgrids[memory,dotted]{2EFo}{3}{1}{3}{}
+  \node[at=(2EFo1)] {$EF[\ldots]$};
+  \bracelabel{2EFo1.north east}{2EFo1.south east}{right}{$k_C$}\\
 
   %% Inner loop starts
-  \vgrids[l3]{2BCi}{1}{2}{3}{\bpackarr[4]{\x}}
-  \bracelabel{2BCi1.south west}{2BCi1.south east}{below}{$n_R$}
-  \bracelabel{2BCi3.north east}{2BCi3.south east}{right}{$k_C$}
-  \path (2BCi1.north west) -- (2BCi2.north east) node[midway,label={above:$\tilde{BC}$}] {};&
+  \vgrids[l3]{2EFi}{1}{2}{3}{\bpackarr[4]{\x}}
+  \bracelabel{2EFi1.south west}{2EFi1.south east}{below}{$n_R$}
+  \bracelabel{2EFi3.north east}{2EFi3.south east}{right}{$k_C$}
+  \path (2EFi1.north west) -- (2EFi2.north east) node[midway,label={above:$\widetilde{EF}$}] {};&
 
   \pluseqnode{2i}&
 
-  \vgrids[memory]{2B}{1}{2}{3}{}
-  \node[at=(2B1),rotate=-90] {$B[\ldots]$};
-  \bracelabel{2B1.south west}{2B1.south east}{below}{$l_C$}&
+  \vgrids[memory]{2E}{1}{2}{3}{}
+  \node[at=(2E1),rotate=-90] {$E[\ldots]$};
+  \bracelabel{2E1.south west}{2E1.south east}{below}{$l_C$}&
 
-  \hgridscache[l3]{memory}{2C}{3}{1}{3}{}
-  \node[at=(2C1)] {$C[\ldots]$};
-  \bracelabel{2C1.north west}{2C1.south west}{left}{$l_C$}
-  \packlabel{2C1.north east}{2C1.south east}{right}\\
+  \hgridscache[l3]{memory}{2F}{3}{1}{3}{}
+  \node[at=(2F1)] {$F[\ldots]$};
+  \bracelabel{2F1.north west}{2F1.south west}{left}{$l_C$}
+  \packlabel{2F1.north east}{2F1.south east}{right}\\
 
 
-  \hgrids[l3]{1BCi}{3}{1}{3}{}
-  \node[at=(1BCi1)] {$BC[\ldots]$};
-  \bracelabel{1BCi1.north east}{1BCi1.south east}{right}{$m_C$}&
+  \hgrids[l3]{1EFi}{3}{1}{3}{}
+  \node[at=(1EFi1)] {$EF[\ldots]$};
+  \bracelabel{1EFi1.north east}{1EFi1.south east}{right}{$m_C$}&
 
   \pluseqnode{1i}&
 
-  \hgridscache[l2]{memory}{1B}{1}{1}{3}{}
-  \node[at=(1B1)] {$B[\ldots]$};
-  \bracelabel{1B1.north west}{1B1.south west}{left}{$m_C$}
-  \packlabel{1B1.north east}{1B1.south east}{right}&
+  \hgridscache[l2]{memory}{1E}{1}{1}{3}{}
+  \node[at=(1E1)] {$E[\ldots]$};
+  \bracelabel{1E1.north west}{1E1.south west}{left}{$m_C$}
+  \packlabel{1E1.north east}{1E1.south east}{right}&
 
-  \node[wide-mat,l3] (1C) {$\tilde{C}$};\\
+  \node[wide-mat,l3] (1F) {$\widetilde{F}$};\\
 
   &\node[draw,rectangle] (kern-inner) {Macrokernel};&&\\
 
   %% Inner loop ends
 
-  \hgrids[memory]{1D}{3}{1}{3}{}
-  \node[at=(1D1)] {$D[\ldots]$};
-  \bracelabel{1D1.north east}{1D1.south east}{right}{$m_C$}&
+  \hgrids[memory]{1G}{3}{1}{3}{}
+  \node[at=(1G1)] {$G[\ldots]$};
+  \bracelabel{1G1.north east}{1G1.south east}{right}{$m_C$}&
 
   \pluseqnode{1o}&
 
-  \hgridscache[l2]{memory}{1A}{1}{1}{3}{}
-  \node[at=(1A1)] {$A[\ldots]$};
-  \bracelabel{1A1.north west}{1A1.south west}{left}{$m_C$}
-  \packlabel{1A1.north east}{1A1.south east}{right}&
+  \hgridscache[l2]{memory}{1D}{1}{1}{3}{}
+  \node[at=(1D1)] {$D[\ldots]$};
+  \bracelabel{1D1.north west}{1D1.south west}{left}{$m_C$}
+  \packlabel{1D1.north east}{1D1.south east}{right}&
 
-  \node[wide-mat,l3] (1BCo) {$\tilde{BC}$};
+  \node[wide-mat,l3] (1EFo) {$\widetilde{EF}$};
   \begin{scoped}[start chain=labels going {below=2pt of \tikzchainprevious}]
     \node[legend=Main Memory, memory,anchor=north west] at (0, -1.8) {};
     \node[legend=L3 cache, l3] {};
     \node[legend=L2 cache, l2] (legend-anchor) {};
   \end{scoped}&\\
 };
-\path node[draw,above=1.8cm of 3o-plus] (3o-loop){3rd loop of outer algorithm}
-(3o-plus) -- (2o-plus) node[loop-label] (2o-loop){2nd loop, outer alg./3rd loop of inner}
+\path node[draw,above=1.8cm of 3o-plus] (3o-loop){3rd loop of both algorithms}
+(3o-plus) -- (2o-plus) node[loop-label] (2o-loop){2nd loop of outer alg.}
 (2o-plus) -- (2i-plus) node[loop-label] (2i-loop){2nd loop of inner alg.}
 (2i-plus) -- (1i-plus) node[loop-label] (1i-loop){1st loop of inner alg.}
 (kern-inner) -- (1o-plus) node[loop-label,pos=0.35] (1o-loop){1st loop of outer alg.}
 node[draw, below=1.8cm of 1o-plus] (kern-outer) {Macrokernel};
 
 \draw[rounded corners] let \p1 = ($(kern-outer.south) + (0pt, -5pt)$),
-\p2 = ($(1BCo.south east) + (25pt, 0)$),
-\p3 = ($(1D3.south west) + (-5pt, 0)$),
+\p2 = ($(1EFo.south east) + (25pt, 0)$),
+\p3 = ($(1G3.south west) + (-5pt, 0)$),
 \p{east} = (\x2, \y1), \p{west} = (\x3, \y1) in
 (1o-loop.west) -| (\p{west}) coordinate[below left=5pt and 5pt] (1o-rect-west)
 -- (\p{east}) coordinate[below right=5pt and 5pt] (1o-rect-east)
@@ -111,8 +111,8 @@ node[draw, below=1.8cm of 1o-plus] (kern-outer) {Macrokernel};
 \loopborder{3o}{2o}
 
 \draw[rounded corners] let \p1 = ($(kern-inner.south) + (0pt, -5pt)$),
-\p2 = ($(1C.south east) + (25pt, 0)$),
-\p3 = ($(1BCi3.south west) + (-5pt, 0)$),
+\p2 = ($(1F.south east) + (25pt, 0)$),
+\p3 = ($(1EFi3.south west) + (-5pt, 0)$),
 \p{east} = (\x2, \y1), \p{west} = (\x3, \y1) in
 (1i-loop.west) -| (\p{west}) coordinate (1i-rect-west)
 -- (\p{east}) coordinate (1i-rect-east)
@@ -120,8 +120,8 @@ node[draw, below=1.8cm of 1o-plus] (kern-outer) {Macrokernel};
 
 \loopborder{2i}{1i}
 
-\path[draw,l3] ($(2BCo1.west) + (-5pt, 0pt)$) -- ++(-10pt, 0pt) coordinate (inner-arr-start)
-|- ($(2BCi3.north) + (-5pt, 15pt)$) node[pos=0.4,left=3pt] {Compute $\tilde{BC}$} coordinate (inner-arr-down)
+\path[draw,l3] ($(2EFo1.west) + (-5pt, 0pt)$) -- ++(-10pt, 0pt) coordinate (inner-arr-start)
+|- ($(2EFi3.north) + (-5pt, 15pt)$) node[pos=0.4,left=3pt] {Compute $\widetilde{EF}$} coordinate (inner-arr-down)
 -- ++ (0pt, -8pt)
 -- ++(-2.5pt, 0pt) -- ++(5pt, -5pt) -- ++(5pt, 5pt) -- ++(-2.5pt, 0pt)
 -- ++ (0pt, 3pt)

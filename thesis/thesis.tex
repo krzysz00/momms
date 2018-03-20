@@ -214,7 +214,7 @@ For our discussion of \gemmt{}, we well be considering the operation $G \pluseq 
 To derive our algorithm for \gemmt{}, we begin by considering the computation of $\textsc{gemm}(D, EF, G)$ with the BLIS algorithm, attempting to find ways to not need all of $EF$ at once.
 We consider an execution of an \emph{outer algorithm} which computes $G \pluseq D(EF)$.
 We then trace the execution of the outer algorithm, propagating any partitioning of $(EF)$ to a virtual computation of $(EF) = E \cdot F$.
-This analysis demonstrated that no reads were performed from $(EF)$ until it was packed into $\tilde{EF}$, and so we could defer packing it until then.
+This analysis demonstrated that no reads were performed from $(EF)$ until it was packed into $\widetilde{EF}$, and so we could defer packing it until then.
 
 For $G \pluseq D(ED)$, the BLIS algorithm first partitions both $(EF)$ and $G$ in the $n$ dimension, creating the series of subproblems $G_{,1} \pluseq D(EF)_{,1}; G_{,2} \pluseq D(EF)_{,2}; \ldots; G_{,n \mod n_C} \pluseq D(EF)_{n \mod n_C}$.
 These splits fix the $n$ dimension for each subproblem to be at most $n_C$.

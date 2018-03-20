@@ -48,8 +48,7 @@
 \begin{frame}
   \frametitle{Matrix chaining problem}
   \begin{itemize}
-  \item Problem: compute $A_1A_2\cdots A_n$ efficiently, $A_i$ matrices
-  \item Where do the parentheses go?
+  \item Problem: compute $A_1A_2\cdots A_n$ efficiently
   \item $O(n \log n)$ algorithm, also $O(n^3)$ with dynamic programming
   \item Fewer flops $\to$ more performance?
   \end{itemize}
@@ -59,7 +58,7 @@
   \frametitle{Generalized matrix chaining}
   \begin{itemize}
   \item In reality --- transposes, inverses, properties
-  \item Ex:
+  \item
     \begin{description}
     \item[Ensemble Kalman filter] $X_i^b S_i (Y_i^b)^T R_i^{-1}$
     \item[Tridiagonalization] $\tau_u\tau_vvv^TAuu^T$
@@ -74,7 +73,7 @@
 \begin{frame}
   \frametitle{\gemmt{} --- Why bother?}
   \begin{itemize}
-  \item Examples again:
+  \item
     \begin{itemize}
     \item $\bm{X_i^b S_i (Y_i^b)^T}R_i^{-1}$
     \item $\tau_u\tau_v \bm{vv^TAuu^T}$
@@ -89,8 +88,7 @@
   \frametitle{\gemmt{} --- Why a new algorithm?}
   \begin{itemize}
   \item Current approach: parentheses, multiply twice, store temporary $T$
-  \item $T$ often eats memory
-  \item Writing/reading $T$ can hit your performance
+  \item $T$ often eats memory (\& perf)
   \item We can do better!
   \item Use how \gemm{} works to nest computations
   \item $O(1)$ extra memory, maybe more performance
@@ -122,6 +120,12 @@
   \begin{adjustbox}{max size={!}{0.87\textheight},center}
   \begin{tikzpicture}
     \input{macrokernel-picture}
+    \path let \p{north} = (2-loop.north),
+    \p{west} = (2-rect-west),
+    \p{east} = (2-rect-east)
+    in node [fit={(\x{west}, \y{north}) (1B1.south east) (\x{east}, \y{north})},
+    fill=white, opacity=0.3, visible on=<-1>] (hide-square) {}
+    coordinate [visible on=<2->] (dummy-coord);
   \end{tikzpicture}
   \end{adjustbox}
 \end{frame}
@@ -151,38 +155,82 @@
 \end{frame}
 
 \section[\gemmt{}]{The \gemmt{} algorithm}
+\frame{\sectionpage}
+
 \begin{frame}
   \frametitle{Key concept of the algorithm}
   \begin{itemize}
   \item We want $G \pluseq DEF$, (dimensions: $m, k, l, n$ in order)
   \item $EF$ first needed in packing step
   \item Compute a block then
-  \item Have \gemm{} algorithm, but
   \end{itemize}
 \end{frame}
 
 \begin{frame}
   \frametitle{Deriving \gemmt{}: Partitionings}
-  $G \pluseq D(EF)$ with BLIS, $(EF)$ virtual.
-  \begin{enumerate}
-  \item Partition $n$ dimension by $n_C$\\
-    Limits rows of $(EF)$, $F$, $G$
-  \item Partition $k$ dimension by $k_C$\\
-    Limits columns of $D$, $(EF)$; rows of $E$
-  \end{enumerate}
-  \begin{itemize}
-  \item Block of $EF$ is $k_C \times n_C$.
-  \item Now needed for $\tilde{EF}$
-  \end{itemize}
+  \begin{adjustbox}{max size={!}{0.87\textheight},center}
+  \begin{tikzpicture}
+    \matrix (pics)[column sep=0.2cm, row sep=5.5ex, ampersand replacement=\&] {
+      \&
+      \node[at={(1.5, 0)}] {\large $G$};\&
+      \node[at={(0, 0)}] {\large $\pluseq$};\&
+      \node[at={(1.5, 0)}] {\large $D$};\&
+      \node[at={(1.5, 0)}] {\large $[(EF)$};\&
+      \node[at={(0, 0)}] {\large $\leftrightarrow$};\&
+      \node[at={(1.5, 0)}] {\large $E$};\&
+      \node[at={(1.5, 0)}] {\large $F]$};\\
+
+      \node[at={(0, -1.5)}] {\large 1.};\&
+      \node[square-mat] (2G) {\large $m \times n$};\&
+      \pluseqnode{2}\&
+      \node[square-mat] (2D) {\large $m \times k$};\&
+      \node[square-mat, dotted] (2EF) {\large $k \times n$};
+      \bracelabel{2EF.north west}{2EF.south west}{left}{}\&
+      \node[at={(0, -1.5)}] {\large $\leftrightarrow$};\&
+      \node[square-mat] (2E) {\large $k \times l$};\&
+      \node[square-mat] (2F) {\large $l \times n$};
+      \bracelabel{2F.north east}{2F.south east}{right}{}\\
+
+      \node[at={(0, -1.5)}] {\large 2.};\&
+      \node[square-mat] (1G) {\large $m \times n_C$};\&
+      \pluseqnode{1}\&
+      \node[square-mat] (1D) {\large $m \times k$};\&
+      \node[square-mat, dotted] (1EF) {\large $k \times n_C$};
+      \bracelabel{1EF.north west}{1EF.south west}{left}{}\&
+      \node[at={(0, -1.5)}] {\large $\leftrightarrow$};\&
+      \node[square-mat] (1E) {\large $k \times l$};\&
+      \node[square-mat] (1F) {\large $l \times n_C$};
+      \bracelabel{1F.north east}{1F.south east}{right}{}\\
+
+      \node[at={(0, -1.5)}] {\large 3.};\&
+      \node[square-mat] (0G) {\large $m \times n_C$};\&
+      \pluseqnode{0}\&
+      \node[tall-mat] (0D) {\large $m \times k_C$};\&
+      \node[wide-mat, dotted] (0EF) {\large $k_C \times n_C$};
+      \bracelabel{0EF.north west}{$(0, -3)$}{left}{}\&
+      \node[at={(0, -1.5)}] {\large $\leftrightarrow$};\&
+      \node[wide-mat] (0E) {\large $k_C \times l$};\&
+      \node[square-mat] (0F) {\large $l \times n_C$};
+      \bracelabel{0F.north east}{0F.south east}{right}{}\\
+    };
+  \end{tikzpicture}
+  \end{adjustbox}
 \end{frame}
 
 \begin{frame}
   \frametitle{Deriving \gemmt{}: Inner algorithm}
+  \begin{adjustbox}{max size={!}{0.5\textheight},center}
+  \begin{tikzpicture}
+    \matrix (pics)[column sep=0.2cm, row sep=5.5ex, ampersand replacement=\&] {
+      \node[wide-mat, l3] (0EF) {\large $\widetilde{EF} \colon k_C \times n_C$};\&
+      \node[at={(0, -0.5)}] {\large $=$};\&
+      \node[wide-mat] (0E) {\large $E \colon k_C \times l$};\&
+      \node[square-mat] (0F) {\large $F \colon l \times n_C$};\\
+    };
+  \end{tikzpicture}
+  \end{adjustbox}
   \begin{itemize}
-  \item Problem size: $k_C \times l \cdot l \times n_C$.
-  \item Panel-matrix --- has good performance with BLIS
-  \item $k_C \times n_C$ output
-  \item Only point to compute in constant memory
+  \item Only point to compute $EF$ in constant memory
   \item \gemm{} algorithm needs tweaks
   \end{itemize}
 
@@ -249,8 +297,8 @@
           $l_C$&256&\\
           $n_C$&2040&4080\\
         \end{tabular}
-        \caption{Constants for Haswell CPUs}
-        \label{tab:haswell-consts}
+        \caption{Parameters for Haswell CPUs}
+        \label{tab:haswell-paramss}
       \end{table}
     \end{column}
   \end{columns}
@@ -318,9 +366,9 @@
   \frametitle{Questions?}
 \end{frame}
 
-\section{Picking constants}
+\section{Picking parameters}
 \begin{frame}
-  \frametitle{Picking constants: $m_R, n_R$}
+  \frametitle{Picking parameters: $m_R, n_R$}
   \begin{itemize}
   \item Determine microkernel
   \item Based on microarchitecture --- register width, FMA properties
@@ -330,7 +378,7 @@
 \end{frame}
 
 \begin{frame}
-  \frametitle{Picking constants: $k_C$}
+  \frametitle{Picking parameters: $k_C$}
   Placing memory in cache: [tag][set \#][offset in line]
 
   \begin{equation*}
@@ -370,7 +418,7 @@
 \end{frame}
 
 \begin{frame}
-  \frametitle{Picking constants: $m_C$ and $n_C$}
+  \frametitle{Picking parameters: $m_C$ and $n_C$}
   \begin{itemize}
   \item For $m_C$: reserve ways for $B$ and $C$
   \item Then take all you can

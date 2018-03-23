@@ -14,8 +14,8 @@ exper = pd.read_csv(argv[1], sep='\t', comment='#', float_precision="high", head
 to_plot = exper[["m", argv[2], "MOMMS BLIS algo."]].copy()
 to_plot.set_index("m", inplace=True)
 x_max = int(ceil(to_plot.index[-1] / 1000.0)) * 1000
-ax = to_plot.plot(title=argv[3], xlim=(0, x_max), ylim=(0, 50),
-                  style='.')
+ax = to_plot.plot(title=argv[3], xlim=(0, x_max), ylim=(0, 56),
+                  style=['r.', 'c+'])
 ax.set_xlabel("N" if len(argv) == 4 else argv[4])
 ax.set_ylabel("GFlops/s")
 if len(argv) < 6:

@@ -7,6 +7,8 @@ from sys import argv, stderr, exit
 from math import ceil
 from memory_usage import memory_mine, memory_goto
 
+plt.rcParams["figure.figsize"] = (9,7)
+
 if len(argv) < 4:
     print("{}: [data file] [algorithm name] [plot title] [[file]]".format(argv[0]), file=stderr)
     exit(1)
@@ -43,7 +45,7 @@ for name, group in narrow_exper2.groupby(level="Narrowed Dim."):
     group2.index = group2.index.droplevel()
     x_max = int(ceil(group2.index[-1] / 1000.0)) * 1000
     group2.plot(ax=ax, title="Narrow {}".format(name),
-                xlim=(0, x_max))
+                xlim=(0, x_max), style=['r-', 'c--'])
     ax.set_xlabel("N (large dimensions)")
     ax.set_ylabel("Additional Allocations (MiB)")
     i = i + 1

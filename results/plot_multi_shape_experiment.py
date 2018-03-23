@@ -6,6 +6,8 @@ import pandas as pd
 from sys import argv, stderr, exit
 from math import ceil
 
+plt.rcParams["figure.figsize"] = (9,7)
+
 if len(argv) < 4:
     print("{}: [data file] [algorithm name] [plot title] [[file]]".format(argv[0]),
           file=stderr)
@@ -34,8 +36,8 @@ for name, group in narrow_exper2.groupby(level="Narrowed Dim."):
     group2.index = group2.index.droplevel()
     x_max = int(ceil(group2.index[-1] / 1000.0)) * 1000
     group2.plot(ax=ax, title="Narrow {}".format(name),
-                xlim=(0, x_max), ylim=(0, 50),
-                style='.')
+                xlim=(0, x_max), ylim=(0, 56),
+                style=['r.', 'c+'])
     ax.set_xlabel("N (large dimensions)")
     ax.set_ylabel("GFlops/s")
     i = i + 1

@@ -43,6 +43,14 @@
 
 \begin{document}
 \maketitle{}
+\begin{abstract}
+  The generalized matrix chain problem considers how to efficiently compute a series of matrix multiplications where some of the operands may be inverted, transposed, or have mathematical properties that can be used to increase performance.
+  We introduce a primitive, \gemmt{}, which multiplies three general matrices, to aid in solving this problem.
+  By taking advantage of the structure of modern matrix-matrix multiplication algorithms, we derive an algorithm for \gemmt{} which can multiply three matrices using only a constant amount of additional memory.
+  Current approaches to such multiplications require a temporary buffer than can be arbitrarily large.
+  We present experimental results which show that our algorithm retains performance comprable to that of current methods.
+\end{abstract}
+
 \section{Introduction}
 The matrix chain problem asks how to efficiently parenthesize a matrix product $A_1A_2\cdots A_n$.
 $O(n \log n)$ algorithms for solving this problem are known\mycite{Hu1984}, as are simpler $O(n^3)$ dynamic-programming solutions\mycite{Barthels2018}.
@@ -73,13 +81,18 @@ Our algorithm can therefore be used as a primitive in generalized matrix chain s
 \section{Background}
 \subsection{High-performance {\cmunicode \gemm{}}}
 Before discussing our approach to \gemmt{}, it is important to review the implementation of high-performance \gemm{}.
-High-performance \gemm{} algorithms operate by repeatedly reducing the multiplication to a series of multiplications of blocks of the inputs.
-These blocks are sized to allow an operand to one of these subproblems to utilize a level of the CPU's cache effectively and prevent it from being evicted during further blocking.
-Multiple levels of blocking are required to effectively utilize all levels of the cache.
+High-performance \gemm{} algorithms operate by repeatedly reducing the multiplication to a series of multiplications of regions of the inputs.
+These regions are sized to allow an operand to one of these subproblems to utilize a level of the CPU's cache effectively and prevent it from being evicted during further subdivision.
+Multiple levels of such subdivision are required to effectively utilize all levels of the cache.
 These steps are necessary because of the memory hierarchy of modern CPUs, where there are multiple (currently three) levels of cache, which increase in size but decrease in speed, between registers and main memory.
+Subdividing the matrices in a matrix multiplication along some dimension and then computing each resulting subproblem is known as \emph{partitioning} along that dimension.
+
+The process of subdividing the operands to \gemm{} is intended to produce regions with particular shapes that allow (or will eventually allow) for performant computations.
+If we consider a $m' \times n'$ subregion $M'$ of a matrix $M$, we will say that $M'$ is a \emph{block} of $M$ if $m'$ and $n'$ are approximately equal.
+If $m'$ is much smaller than $n'$, then $M'$ is a \emph{row panel}, while $n' \ll m'$ makes $M'$ a \emph{column panel} of $M$.
 
 There are two specialized primitives that appear in high-performance \gemm{}: the \emph{microkernel} and \emph{macrokernel}.
-The microkernel is a highly-tuned, hand-written function (almost always implemented in assembly) that multiplies an $m_R \times k$ panel of $A$ by an $k \times n_R$ panel of $B$ to update an $m_R \times n_R$ region of $C$, which is updated in registers and written to memory.
+The microkernel is a highly-tuned, hand-written function (almost always implemented in assembly) that multiplies an $m_R \times k$ row panel of $A$ by an $k \times n_R$ column panel of $B$ to update an $m_R \times n_R$ block of $C$, which is updated in registers and written to memory.
 An illustration of the microkernel is located in Algorithm \ref{alg:macrokernel}.
 (In this illustration, as with all others in this work, constants that appear twice indicate the dimension along which each loop proceeds, along with the stride.)
 The parameters $m_R$ and $n_R$ are based on the microarchitecture of the CPU, which can be derived analytically\mycite{Low2016} or by autotuning\mycite{Whaley1998}.
@@ -103,24 +116,26 @@ The parameters $m_R$ and $n_R$ are based on the microarchitecture of the CPU, wh
 \end{algorithm}
 
 In order for the microkernel to operate efficiently, the data within the panels must be arranged so that it is read in a linear fashion, which is the pattern of reads best suited to the CPU's memory prefetcher.
-This is achieved by storing each panel of $A$ in column-major form with columns of height $m_R$ and keeping each panel of $B$ row-major with row width $n_R$.
+This is achieved by storing each panel of $A$ passed to the microkernel in column-major form with columns of height $m_R$ and keeping each panel of $B$ row-major with row width $n_R$.
 This packed storage format in also illustrated in Algorithm \ref{alg:macrokernel}.
 
-More importantly, to allow the microkernel to stream the data it operates on efficiently, the panels it examines must be stored in cache beforehand.
+More importantly, to allow the microkernel to stream the data it operates on efficiently, the panels it multiplies must be stored in cache beforehand.
 Since caches are fixed-size, we can only store a fixed number of such panels at any given time.
-Specifically, we can only store an $m_C \times k_C$ block of $A$ and a $k_C \times n_C$ block of $B$.
-The process of rearranging these blocks into the format needed by the microkernel is known as \emph{packing}.
-The parameters $m_C$, $k_C$, and $n_C$ are chosen to ensure all levels of cache are used efficiently.
+Specifically, we can only store an $m_C \times k_C$ subregion of $A$ and a $k_C \times n_C$ subregion of $B$.
+The process of rearranging these regions into the format needed by the microkernel is known as \emph{packing}.
 
-We will use $\widetilde{A}$ and $\widetilde{B}$ to denote the packed blocks of $A$ and $B$, respectively, and $C'$ to denote the corresponding block of $C$.
+We will use $\widetilde{A}$ and $\widetilde{B}$ to denote the packed regions of $A$ and $B$, respectively, and $C'$ to denote the corresponding block of $C$.
 The loops that perform $C' \pluseq \widetilde{A}\widetilde{B}$ form the macrokernel, which is depicted as Algorithm \ref{alg:macrokernel}.
 (In all the algorithms presented in this work, we will use Python-style notation for indexing, that is, matrices are 0-indexed and   $M[a:b, c:d]$ selects rows $[a, b)$ and columns $[c, d)$, with omitted operands spanning to the beginning/end of the dimension.)
 
+The parameters $m_C$, $k_C$, and $n_C$ are chosen to ensure all levels of cache are used efficiently.
+The process of choosing these parameters, described in Section \ref{subsec:params}, leaves $m_C$ close in size to $k_C$ and keeps $n_C$ much larger then both of these.
+This means that $\widetilde{A}$ corresponds to a block of $A$, while $\widetilde{B}$ is a rearranged row panel of $B$.
 
 Many high-performance \gemm{} implementations in use today are based on Goto's algorithm\mycite{Goto2008}.
 One such implementation, which we have based our work on, is BLIS\mycite{VanZee2016}.
 The BLIS algorithm, which is a refactoring of Goto's algorithm, is presented as Algorithm \ref{alg:blis}.
-It brings a row panel of $B$ into the $L3$ (and later $L1$) cache, while storing a block of $A$ in $L2$.
+It brings the row panel of $B$ into the $L3$ cache (later moving its constituent column panels into $L1$), while storing a block of $A$ in $L2$.
 \begin{algorithm}
   \caption{The BLIS algorithm}
   \label{alg:blis}
@@ -193,7 +208,7 @@ Examining the loops in the BLIS algorithm, as was done in\mycite{Low2016}, shows
 For example, the micro-kernel reuses the small block of $C'$ that is stored in registers while looping over the panels.
 
 Even though reuse occurs at each level of the algorithm, we will focus on the reuse of the packed buffers, as this is a key consideration for maintaining the performance of the algorithm\mycite{Henry92}.
-Packing into $\widetilde{B}$ and $\widetilde{A}$ introduces overhead, time that is not usable for computation.
+Packing into $\widetilde{B}$ and $\widetilde{A}$ introduces overhead, which is time that is not usable for computation.
 Therefore, reusing the packed buffers many times will lower the relative proportion of time spent on packing, thus increasing performance.
 
 To improve reuse of $\widetilde{B}$, we need the first loop around the macrokernel, which packs into $\widetilde{A}$, to run many times, since each of those iterations covers computations that read the entirety of $\widetilde{B}$.
@@ -212,51 +227,107 @@ This reasoning shows that the BLIS algorithm achieves its best performance when 
 For our discussion of \gemmt{}, we well be considering the operation $G \pluseq DEF$, where $D$ is $m \times k$, $E$ is $k \times l$ and $F$ is $l \times n$.
 
 \subsection{Deriving \gemmt}
-To derive our algorithm for \gemmt{}, we begin by considering the computation of $\textsc{gemm}(D, EF, G)$ with the BLIS algorithm, attempting to find ways to not need all of $EF$ at once.
-We consider an execution of an \emph{outer algorithm} which computes $G \pluseq D(EF)$.
-We then trace the execution of the outer algorithm, propagating any partitioning of $(EF)$ to a virtual computation of $(EF) = E \cdot F$.
-This analysis demonstrated that no reads were performed from $(EF)$ until it was packed into $\widetilde{EF}$, and so we could defer packing it until then.
+To derive our algorithm for \gemmt{}, we considered $\gemm{}(D, EF, G)$, with the BLIS algorithm, looking for when elements of $EF$ were needed and whether it was possible to only compute parts of that product as necessary.
+We define the computation of $G \pluseq D(EF)$ to be the \emph{outer algorithm}, and the operations needed to compute parts of $E \cdot F$ when needed to be the \emph{inner algorithm}.
+Analyzing the outer algorithm showed that the earliest we would need to read from $EF$ was the step where \gemm{} packs $B$ to $\widetilde{B}$, and so the inner algorithm would need to run before this step.
 
-For $G \pluseq D(ED)$, the BLIS algorithm first partitions both $(EF)$ and $G$ in the $n$ dimension, creating the series of subproblems $G_{,1} \pluseq D(EF)_{,1}; G_{,2} \pluseq D(EF)_{,2}; \ldots; G_{,n \mod n_C} \pluseq D(EF)_{n \mod n_C}$.
-These splits fix the $n$ dimension for each subproblem to be at most $n_C$.
-When this partitioning is propagated to the virtual computation of $EF$, the corresponding subproblems have the form $(EF)_{,j} \pluseq EF_{,j}$.
+The first step of the \gemm{} algorithm reduces $C \pluseq AB$ (or, in our case, $G \pluseq D(EF)$) to the following subproblems:
+\begin{equation*}
+  \left[\begin{array}{c|c|c|c|c|c}
+    C_{,1}&C_{,2}&\cdots&C_{,j}&\cdots& C_{n \mod n_C}
+  \end{array}\right]
+  = A
+  \left[\begin{array}{c|c|c|c|c|c}
+    B_{,1}&B_{,2}&\cdots&B_{,j}&\cdots&B_{n \mod n_C}
+  \end{array}\right]
+\end{equation*}
+If we substitute in the values we're computing with, we have:
+\begin{equation*}
+  \left[\begin{array}{c|c|c|c|c|c}
+    G_{,1}&G_{,2}&\cdots&G_{,j}&\cdots& G_{n \mod n_C}
+  \end{array}\right]
+  = D\left(
+    E
+    \left[\begin{array}{c|c|c|c|c|c}
+      F_{,1}&F_{,2}&\cdots&F_{,j}&\cdots&F_{n \mod n_C}
+    \end{array}\right]
+  \right)
+\end{equation*}
 
-Then, for each of the subproblems (we will consider the $j$th one here), the outer algorithm partitions in the $k$ dimension with a stride of $k_C$.
-The resultant subproblems are $G_{,j} \pluseq D_{,1}(EF)_{1,j}; G_{,j} \pluseq D_{,2}(EF)_{2,j}; \ldots; G_{,j} \pluseq D_{,k \mod k_C}(EF)_{k \mod k_C,j}$, which correspond to the virtual subproblems $(EF)_{i,j} = E_{i,}F_{,j}$.
+Now, for the $j$th subploblem, the matrices will be partitioned in the $k$ dimension as follows:
+\begin{equation*}
+  C_{,j}
+  =
+  \left[\begin{array}{c|c|c|c|c|c}
+    A_{,1}&A_{,2}&\cdots&A_{,p}&\cdots&A_{,k \mod k_C}
+  \end{array}\right]
+  \left[\begin{array}{c}
+    B_{1,j}\\\hline
+    \vdots\\\hline
+    B_{p,j}\\\hline
+    \vdots\\\hline
+    B_{k \mod k_C,j}
+  \end{array}\right]
+\end{equation*}
+For the \gemmt{} computation, we have
+\begin{equation*}
+  G_{,j}
+  =
+  \left[\begin{array}{c|c|c|c|c|c}
+    D_{,1}&D_{,2}&\cdots&D_{,p}&\cdots&D_{,k \mod k_C}
+  \end{array}\right]
+  \left(
+  \left[\begin{array}{c}
+          E_{1,}\\\hline
+          \vdots\\\hline
+          E_{p,}\\\hline
+          \vdots\\\hline
+          E_{k \mod k_C,}
+  \end{array}\right]
+  F_{,j}
+  \right)
+\end{equation*}
 
-In the outer algorithm, the next step would be to pack $(EF)_{i,j}$ into $\widetilde{EF}$, which requires elements of $(EF)$ to be available.
-Therefore, we must turn to the problem of finding an \emph{inner algorithm} for this subproblem.
-Such an algorithm would multiply a  $k_C \times l$ row panel of $E$ by an $l \times n_C$ block (or, eventually, column panel) of $F$ to produce a $k_C \times n_C$ row panel of $EF$.
-Per our discussion of matrix reuse, such a shape can be computed by the BLIS algorithm without incurring serious efficiency problems.
+At this point in the algorithm, the subregion $B_{p, j}$ is a row panel of $B$ with a fixed size that will be packed into $\widetilde{B}$, which resides in $L3$ cache.
+We cannot, however, pack from $(EF)_{p, j}$, as we have not computed these values.
+However, if we examine the regions of $E$ and $F$ that correspond to $B_{p, j}$, we notice that $E_{p,}$ is a $k_C \times l$ row panel of $E$ and that $F_{,j}$ is an $l \times n_C$ block of $F$ (under typical conditions), which is a multiplication that can be performed efficiently.
 
-The output of any such inner algorithm fits in a buffer of $k_Cn_C$ floating-point numbers, which takes $O(1)$ space, as opposed to the $O(kn)$ space needed to compute $(EF)$ in its entirety.
-Therefore, we can improve memory usage while maintaining performance by only computing elements of $(EF)$ before the packing step of the outer algorithm.
-Computation earlier in the algorithm would not retain these benefits, and so this choice was necessary to ensure the properties we sought.
+Since the next step in the BLIS algorithm requires the region $(EF)_{p, j}$ to be computed, we must either compute this region now or compute $EF_{,j}$ during the previous loop.
+Computing during the previous loop would result in an arbitrarily large product, preventing us from attaining the memory savings we were searching for.
+However, the product $E_{p,}F_{,j}$ comprises $k_Cn_C$ floats, which can be stored in $O(1)$ memory.
+This shows that the current point in the \gemm{} algorithm is the only time in which we can compute a subregion of $EF$ while keeping the algorithmic properties we sought.
 
 \subsection{The inner algorithm}
-An initial approach to implementing the inner algorithm $EF_{i, j} = E_{i,}F_{,j}$ would be to reuse the BLIS algorithm, nesting it within the outer computation.
-This nesting would, at first, create a redundant outer loop in the inner algorithm, since $n$ cannot be more than $n_C$ for these subproblems
+Now that we have identified the computations that the inner algorithm must perform, we must turn to the problem of deriving it.
+
+The multiplication of a row panel by a block is one that can be carried by the BLIS algorithm without a significant performance loss.
+Therefore, an initial approach to computing $(EF)_{p, j} = E_{p,}F_{,j}$ would be to reuse the BLIS algorithm, nesting it within the outer computation.
+This nesting would, at first, create a redundant outer loop in the inner algorithm, since $n$ cannot be more than $n_C$ for the inner problem.
+
 However, even with the outer loop removed, this naive approach caused performance issues.
-One such issue was that there was no guarantee that the inner algorithm (which computes blocks of $EF$) would place its results into cache.
-Another difficulty came from the fact that we would still need to pack blocks of $EF$ into $\widetilde{EF}$, incurring a cost in memory operations we hoped to avoid.
+One such issue was that there was no guarantee that the inner algorithm would place its results into cache.
+Another difficulty came from the fact that we would still need to pack the resulting blocks of $EF$ to create $\widetilde{EF}$ (which is what $\widetilde{B}$ is in this computation), incurring a cost in memory operations we hoped to avoid.
 
 Fortunately, these problems are resolvable.
-The microkernel can be made to write in the packed format, eliminating a large number of memory operations, by informing it that the output matrix was row-major with rows of width $n_R$.
-To solve the cache-residency issue, we observed that, if we used an $n_C$ value that was half of the one from BLIS, both a packed block of $F$ and the output block of $EF$ could reside in the $L3$ cache simultaneously.
+The microkernel can be made to write in the packed format, eliminating a large number of memory operations, by informing it that the output matrix is row-major with rows of width $n_R$.
+This allows us to write $\widetilde{EF}$ directly, eliminating the ``pack $\widetilde{B}$'' step from the outer algorithm.
+Therefore, we can simply consider the inner algorithm to be performing $\widetilde{EF} = E_{p,}F_{,j}$.
+
+To solve the cache-residency issue, we observe that, if we use an $n_C$ value that was half of the one used by a two-matrix \gemm{} in both algorithm, the packed row panel of $F$ and $\widetilde{EF}$ could reside in the $L3$ cache simultaneously.
 This change does not break the assumptions of the BLIS algorithm, as $n_C/2$ is still much larger than $k_C$ or $m_C$ in practice.
 
 Another issue with this approach is that the inner computation is a panel-matrix multiply, that is, the $m$ dimension is small, and $\widetilde{F}$ would see little reuse.
 This suboptimal shape did have a performance impact, though it turned out to be small in practice.
 
 There was one other adjustment made to the BLIS algorithm's parameters in order to to enable the fusion to remain efficient.
-In some cases, the BLIS microkernel's loops have a final iteration that considers fewer than $m_R$ rows (or $n_R$ columns) because not all matrices have sizes divisible by $m_R$ and $n_R$.
-Computation of this fridge iteration can have a performance impact, as special processing is required to account for the unusual sizes.
+In some cases, the BLIS macrokernel's loops have a final iteration that considers fewer than $m_R$ rows (or $n_R$ columns) because not all matrices have sizes divisible by $m_R$ and $n_R$.
+Computation of this fridge iteration has a performance impact, as special processing is required to account for the unusual sizes.
 In the fused BLIS algorithm, the value of $k_C$ becomes the $m$ dimension of the problem computed by the inner algorithm.
 If $k_C$ is not divisible by $m_R$, we must, at the cost of slightly less optimal cache usage, reduce it slightly so that it is a multiple of $m_R$, thus ensuring we do not incur performance penalties every time we compute $\widetilde{EF}$.
 However, $l_C$, which is the inner algorithm's version of $k_C$, can be kept at the BLIS value, as these considerations are not relevant there.
 
 \subsection{Combined algorithm (and variants)}
-The algorithm that resulted from this derivation is Algorithm \ref{alg:gemm3}, which is illustrated in Figure \ref{fig:gemm3}.
+The algorithm that results from this derivation is Algorithm \ref{alg:gemm3}, which is illustrated in Figure \ref{fig:gemm3}.
 
 \begin{figure}
   \centering
@@ -293,21 +364,20 @@ It should be noted that this algorithm computes $G \pluseq D(EF)$.
 In some cases, it is much more efficient (on account of the dimensions of the inputs) to compute $G \pluseq (DE)F$ instead.
 Attempting to derive an algorithm for that problem directly does not work, as the block $\widetilde{DE}$ in $L2$ is not of a shape that can be multiplied efficiently by the BLIS algorithm.
 Fortunately, we can transform problems of this form to the equivalent problem $G^T \pluseq F^T(E^TD^T)$.
-This transformation can be performed at effectively no cost by re-interpreting the memory the matrices are stored in (treating a row-major matrix as column-major and vice-versa).
+This transformation can be performed at effectively no cost by re-interpreting the memory the matrices are stored in (treating a matrix stored in row-major form as column-major and vice-versa).
 
 \section{Experiments and Results}
+\subsection{Implementation}
 To test our algorithm's performance, we implemented both it and the BLIS algorithm in the Multilevel Optimization for Matrix Multiply Sandbox (MOMMS), which wes developed for\mycite{SmithDiss2017}.
 This framework allowed us to declaratively generate the code for an algorithm by specifying the series of loops and packing operations required, and allowed us to interface to the BLIS microkernels.
 Initially, we verified that the MOMMS implementation of the BLIS algorithm had similar performance to the reference implementation, which was written in C.
+Then, we modified the MOMMS framework to support generating code for multiplying three matrices together.
+These modifications allowed us to express both our \gemmt{} algorithm and the typical $T = EF; G \pluseq DT$ method we were comparing against.
 
-We modified the framework to add support for ``subcomputations'', which are virtual objects that represent a \gemm{} operation.
-Subcomputations pass through partitionings to their respective input matrices, and then can be forced to fill a given output matrix.
-This both allowed us to cleanly express the \gemmt{} algorithm, and allowed the typical $T = EF; G \pluseq DT$ algorithm for \gemmt{} to be expressed as the BLIS algorithm where one operand is the BLIS algorithm as a subcompuation, with that operand being forced immediately.
-
-We tested the performance, in gigaflops per second, of both our algorithm and the typical approach.
+We tested the performance, in gigaflops (a flop is one floating point operation, such as a multiplication or addition) per second, of both our algorithm and the typical approach.
 The experiments were run on a public lab machine at the University of Texas at Austin.
-The machine had an Intel Xeon E3-1270 v3 CPU, which ran at 3.5 GHz and implemented the Haswell microarchitecture.
-The experimental system had 15 GB of RAM, 8 MB of $L3$ cache, 256 KB of $L2$ cache (which was an 8-way set-associative cache with 64 byte cache lines) and $32 KM$ of $L1$ cache (per core), which had the same characteristics as the $L2$.
+The target machine had an Intel Xeon E3-1270 v3 CPU, which ran at 3.5 GHz and implemented the Haswell microarchitecture.
+The experimental system had 15 GB of RAM, 8 MB of $L3$ cache, 256 KB of $L2$ cache (which was an 8-way set-associative cache with 64 byte cache lines) and 32 KB of $L1$ cache (per core, with the same associativity and line sizes as the $L2$ cache).
 The blocking parameters that arose from this data can be found in Table \ref{tab:parameters}
 
 \begin{table}
@@ -323,9 +393,10 @@ The blocking parameters that arose from this data can be found in Table \ref{tab
   \label{tab:parameters}
 \end{table}
 
-Our experiments were run both on square matrices ($m = n = k = l = N$) and on problems where a particular dimension was fixed at $9$ while the others varied together, to evaluate the performance of these algorithms on multiple input shapes.
+\subsection{Experiments performed}
+Our experiments were run both on square matrices ($m = n = k = l = N$, where $D$ is $m \times k$, $E$ is $k \times l$, $F$ is $l \times n$, and $G$ is $m \times n$) and on problems where a particular dimension was fixed at $9$ while the others varied together, to evaluate the performance of these algorithms on multiple input shapes.
 We sampled the performance at multiples of sixteen from $N = 16$ to $4912$ to test the suitability of our approach on many input sizes.
-All the inputs were stored column-major, while the temporaries and outputs were stored row-major, since the BLIS microkernel has noticably increased performance when writing to row-major matrices (and since the packed buffer is row-major).
+All the inputs were stored in column-major form, while the temporaries and outputs were stored in row-major form, since the BLIS microkernel has noticably increased performance when writing to row-major matrices (and since the packed buffer is row-major).
 This unusual combination of input formats ensured a fair comparison between the two algorithms.
 In addition, we tested the $G^T = F^T(E^TD^T)$ case, in which all matrices were row major, for square inputs.
 
@@ -333,24 +404,25 @@ The results of these experiments can be found in Figure \ref{fig:bc_square} for 
 The $G \pluseq (DE)F$ experiment's results are in Figure \ref{fig:ab_square}.
 Data for the square case shows that, once performance has stabilized around $N = 512$, the two algorithms are almost always within 5\% of each other in GFlops/s, showing comparable performance.
 
+In all of these figures, the highest value on the y-axis is the peak performance of the target machine, which is 56 gigaflops per second.
 \begin{figure}
   \centering
   \includegraphics[height=0.40\textheight]{../results/earwig2/gemm3}
-  \caption{Performance of our \gemmt{} implementation compared to a pairr of \gemm{} calls, square matrices}
+  \caption{Performance of our \gemmt{} implementation compared to a pair of \gemm{} calls, square matrices}
   \label{fig:bc_square}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[bt]
   \centering
-  \includegraphics[height=0.40\textheight]{../results/earwig2/gemm3_rectangles}
-  \caption{Performance of our \gemmt{} implementation compared to a pairr of \gemm{} calls, rectangular matrices}
+  \includegraphics[width=0.95\textwidth]{../results/earwig2/gemm3_rectangles}
+  \caption{Performance of our \gemmt{} implementation compared to a pair of \gemm{} calls, rectangular matrices}
   \label{fig:bc_rectangles}
 \end{figure}
 
 \begin{figure}
   \centering
   \includegraphics[height=0.40\textheight]{../results/earwig2/gemm3_ab_bc_kernel}
-  \caption{Performance of our \gemmt{} implementation compared to a pairr of \gemm{} calls, square transposed matrices}
+  \caption{Performance of our \gemmt{} implementation compared to a pair of \gemm{} calls, square transposed matrices}
   \label{fig:ab_square}
 \end{figure}
 
@@ -358,11 +430,11 @@ The computed additional (excluding inputs and outputs) memory consumption of bot
 \begin{figure}
   \centering
   \includegraphics[height=0.40\textheight]{../results/earwig2/gemm3_memory}
-  \caption{Memory usage of our \gemmt{} implementation compared to a pairr of \gemm{} calls}
+  \caption{Memory usage of our \gemmt{} implementation compared to a pair of \gemm{} calls}
   \label{fig:bc_square_mem}
 \end{figure}
 
-\section{Discussion}
+\subsection{Analysis}
 From the figures in the previous section, it is clear that \gemmt{} attains similar performance to a pair of \gemm{} calls with significantly lower memory usage.
 However, it is important to dissect these performance results and determine why they have arisen.
 
@@ -379,8 +451,8 @@ Similar trends can be seen in Figure \ref{fig:ab_square}, which shows the result
 However, the pair of \gemm{} calls retains higher performance for a longer period of time on this workload.
 This occurs because packing from row-major matrices to row-major packed buffers, which is something that occurs more frequently in this experiment, is much more amenable to the CPU's prefetcher than packing from column-major matrices.
 
-The rectangular results from Figure \ref{fig:bc_rectangles} also require examination.
-When $l$ is small, the \gemmt{} algorithm performs better on all inputs, as the memory-writing overhead in the BLIS algorithm remains, while the advantage of reuse in computing $EF$ is reduced (because the $k$ dimension is very narrow).
+The rectangular-matrix results from Figure \ref{fig:bc_rectangles} also require examination.
+When $l$ is small, the \gemmt{} algorithm performs better on all inputs, as the memory-writing overhead in the BLIS algorithm remains, while the advantage of reuse in computing $EF$ is reduced (because the $k$ dimension is very narrow, creating a memory-intensive outer product).
 When $m$ is small, the costs of low $L3$ reuse are imposed at least once on both algorithms, decreasing the performance of both.
 
 When $n$ is narrow, the problem is effectively converted to a series of several matrix-vector multiplications, which cannot achieve high performance with either algorithm.
@@ -390,12 +462,32 @@ The eventually increased performance of \gemmt{} with $k = 9$ is due to the lowe
 
 These results demonstrate the general suitability of our algorithm for \gemmt{} and its suitability as a high-performance primitive.
 
-\section{Things that still might need doing}
-\begin{itemize}
-\item Portability (run on KNL)
-\item Clean experiments (public lab machines are kinda a bad place)
-\item Parallel case (the square-case performance behavior we have is still there, just much more exaggerated on multiple cores)
-\item Make this somewhat longer to keep the writing flag people happy (should happen if we fix one of these other points)
-\end{itemize}
+\section{Conclusions}
+We have demonstrated that, by exploiting the structure of the BLIS algorithm for matrix-matrix multiplication, we can derive an algorithm for \gemmt{} (multiplying three matrices together) that only requires a constant amount of additional memory.
+We have shown that, while the basic concept of our algorithm arises naturally from the structure of \gemm{}, several tweaks are needed to retain high performance.
+
+Experimental results have indicated that, on a variety of workloads, our algorithm maintains a similar level of performance to existing approaches to this problem.
+We know that, on sufficiently small or large problems of certain shapes, our approach offers increased performance because it eliminates a source of memory operation overhead.
+However, there are input sizes that are known to have a small negative performance impact on our approach due to the suboptimal multiplication shape our approach used as a subproblem.
+Neither these gains or losses are particularly large, so we conclude that the main advantages of our approach are the memory savings it offers.
+
+An additional improvement offered by \gemmt{} is that it introduces a cleaner programming interface for the multiplication of three matrices, which is a problem that often arises in practice.
+Therefore, our algorithm will give both programmers and authors of linear algebra code generators (such as Linnea\mycite{Barthels2017}) an interface that is easier to invoke and does not require the manual allocation of a temporary buffer.
+
+\paragraph{Future Work} This work only investigates a sequential implementation of \gemmt{}.
+In the future, we intend to investigate how we can efficiently parallelize our \gemmt{} algorithm to take advantage of the multiple CPU cores available on modern CPUs.
+We also plan to verify the portability of our results by testing on multiple different CPU microarchitectures, such as the recent Knight's Landing processors from Intel.
+
+\paragraph{Acknowledgments}
+We would like to thank Prof.\ Robert van de Geijn for advising this research and directing us towards the research question.
+We also wish to thank Dr.\ Tyler Smith for writing MOMMS and assisting with the algorithm design, and Prof\. Tze Meng Low for his advice on resolving certain performance issues.
+Finally, we wish to acknowledge \textbf{TODO get grant info} National Science Foundation for funding this work through grant \#NNNNNN.
+% \section{Things that still might need doing}
+% \begin{itemize}
+% \item Portability (run on KNL)
+% \item Clean experiments (public lab machines are kinda a bad place)
+% \item Parallel case (the square-case performance behavior we have is still there, just much more exaggerated on multiple cores)
+% \item Make this somewhat longer to keep the writing flag people happy (should happen if we fix one of these other points)
+% \end{itemize}
 \printbibliography{}
 \end{document}

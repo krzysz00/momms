@@ -116,6 +116,19 @@
 \end{frame}
 
 \begin{frame}
+  \frametitle{Important matrix shapes}
+  \begin{adjustbox}{max size={!}{0.87\textheight},center}
+  \begin{tikzpicture}
+    \matrix (pics)[column sep=0.2cm, row sep=5.5ex, ampersand replacement=\&] {
+      \node[square-mat] {Block};\\
+      \node[wide-mat] {Row panel};\\
+      \node[tall-mat,label={right:Column panel}] {};\\
+    };
+  \end{tikzpicture}
+  \end{adjustbox}
+\end{frame}
+
+\begin{frame}
   \frametitle{\gemm{}: The kernels}
   \begin{adjustbox}{max size={!}{0.87\textheight},center}
   \begin{tikzpicture}
@@ -351,14 +364,32 @@
   \end{tikzpicture}
 \end{frame}
 
-\section{Back Matter}
+\section{Conclusions}
+\begin{frame}
+  \frametitle{Conclusions}
+  \begin{itemize}
+  \item \gemm{} structure lets us make \gemmt{}
+  \item Constant memory
+  \item Comprable performance
+  \item Cleaner API
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Future Work}
+  \begin{itemize}
+  \item Parallel case
+  \item More architectures
+  \end{itemize}
+\end{frame}
+
 \begin{frame}
   \frametitle{Acknowledgments}
   \begin{itemize}
-  \item Prof.\ Robert van de Geijn, for advising and providing the inspiration for this work
-  \item Dr.\ Tyler Smith, for writing MOMMS and helping with algorithm design
-  \item Prof.\ Tze Meng Low,  for performance and paper-writing advice
-  \item NSF grant \textbf{TODO NNNNNNN} for funding
+  \item Prof.\ Robert van de Geijn --- advising and providing inspiration
+  \item Dr.\ Tyler Smith --- writing MOMMS and algorithm design
+  \item Prof.\ Tze Meng Low --- performance fixes
+  \item NSF grant \textbf{TODO NNNNNNN} --- funding
   \end{itemize}
 \end{frame}
 

@@ -211,6 +211,7 @@ This reasoning shows that the BLIS algorithm achieves its best performance when 
 \section{Algorithm}
 For our discussion of \gemmt{}, we well be considering the operation $G \pluseq DEF$, where $D$ is $m \times k$, $E$ is $k \times l$ and $F$ is $l \times n$.
 
+\subsection{Deriving \gemmt}
 To derive our algorithm for \gemmt{}, we begin by considering the computation of $\textsc{gemm}(D, EF, G)$ with the BLIS algorithm, attempting to find ways to not need all of $EF$ at once.
 We consider an execution of an \emph{outer algorithm} which computes $G \pluseq D(EF)$.
 We then trace the execution of the outer algorithm, propagating any partitioning of $(EF)$ to a virtual computation of $(EF) = E \cdot F$.
@@ -232,6 +233,7 @@ The output of any such inner algorithm fits in a buffer of $k_Cn_C$ floating-poi
 Therefore, we can improve memory usage while maintaining performance by only computing elements of $(EF)$ before the packing step of the outer algorithm.
 Computation earlier in the algorithm would not retain these benefits, and so this choice was necessary to ensure the properties we sought.
 
+\subsection{The inner algorithm}
 An initial approach to implementing the inner algorithm $EF_{i, j} = E_{i,}F_{,j}$ would be to reuse the BLIS algorithm, nesting it within the outer computation.
 This nesting would, at first, create a redundant outer loop in the inner algorithm, since $n$ cannot be more than $n_C$ for these subproblems
 However, even with the outer loop removed, this naive approach caused performance issues.
@@ -253,6 +255,7 @@ In the fused BLIS algorithm, the value of $k_C$ becomes the $m$ dimension of the
 If $k_C$ is not divisible by $m_R$, we must, at the cost of slightly less optimal cache usage, reduce it slightly so that it is a multiple of $m_R$, thus ensuring we do not incur performance penalties every time we compute $\widetilde{EF}$.
 However, $l_C$, which is the inner algorithm's version of $k_C$, can be kept at the BLIS value, as these considerations are not relevant there.
 
+\subsection{Combined algorithm (and variants)}
 The algorithm that resulted from this derivation is Algorithm \ref{alg:gemm3}, which is illustrated in Figure \ref{fig:gemm3}.
 
 \begin{figure}

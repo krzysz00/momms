@@ -137,7 +137,7 @@
     \p{west} = (2-rect-west),
     \p{east} = (2-rect-east)
     in node [fit={(\x{west}, \y{north}) (1B1.south east) (\x{east}, \y{north})},
-    fill=white, opacity=0.3, visible on=<-1>] (hide-square) {}
+    fill=white, opacity=0.8, visible on=<-1>] (hide-square) {}
     coordinate [visible on=<2->] (dummy-coord);
   \end{tikzpicture}
   \end{adjustbox}
@@ -157,12 +157,12 @@
   \frametitle{Data reuse}
   \begin{itemize}
   \item Every loop reads \emph{something} repeatedly
-  \item Relevant things: packed blocks --- making them takes time
-  \item Packed block reuse problems:
+  \item Relevant things: packed regions --- making them takes time
+  \item Packed region reuse when:
     \begin{itemize}
-    \item $m$ small --- low time between remakes of $\widetilde{B}$
-    \item $n$ small --- same for $\widetilde{A}$
-    \item $k$ tiny --- microkernel doesn't do much, small caches
+    \item $m$ large --- many blocks of $A$ per $\widetilde{B}$
+    \item $n$ large --- many column panels in $\widetilde{B}$
+    \item $k$ not tiny --- more time in microkernel
     \end{itemize}
   \end{itemize}
 \end{frame}
@@ -175,7 +175,7 @@
   \begin{itemize}
   \item We want $G \pluseq DEF$, (dimensions: $m, k, l, n$ in order)
   \item $EF$ first needed in packing step
-  \item Compute a block then
+  \item Compute a row panel then
   \end{itemize}
 \end{frame}
 
@@ -305,6 +305,8 @@
         \centering
         \begin{tabular}{l|c c}
           &\gemmt{}&BLIS algorithm\\ \hline
+          $m_R$&6&6\\
+          $n_R$&8&8\\
           $m_C$&72&72\\
           $k_C$&252&256\\
           $l_C$&256&\\
@@ -344,8 +346,8 @@
   \begin{tikzpicture}
     \node[graph-pic] (graph) {\includegraphics[height=0.9\textheight]{../results/earwig2/gemm3}};
     \node[explanation, right=1.5cm of graph.west] {\small Less packing};
-    \node[explanation, below left=1.6cm and 3pt of graph.north,anchor=north] {\small Suboptimal shape};
-    \node[explanation, below left=2cm and 1cm of graph.north east, anchor=east] {\small Memop overhead};
+    \node[explanation, below left=2.1cm and 3pt of graph.north,anchor=north] {\small Suboptimal shape};
+    \node[explanation, below left=2.5cm and 1cm of graph.north east, anchor=east] {\small Memop overhead};
   \end{tikzpicture}
 \end{frame}
 

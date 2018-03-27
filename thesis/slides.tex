@@ -254,16 +254,21 @@
   \begin{table}
     \centering
     \begin{tabular}{l|l}
-      Problem&Solution\\ \hline \hline
-      Redundant loop over $n$ ($n \leq n_C$) & Remove it\\
-      Packing output wastes space/time & Tweak microkernel params\\
-      $\widetilde{F}$ fights $\widetilde{EF}$ in $L3$ & Halve $n_C$\\
-      Low $\widetilde{F}$ reuse & Low impact in practice\\
-      $m_R \nmid k_C$, leaving fringe & Shrink $k_C$ slightly\\
+      Change&Why?\\\hline\hline
+      Remove outermost loop&Redundant ($n \leq n_C$)\\
+      Microkernel writes packed format&Save space/time\\
+      Halve $n_C$&$\widetilde{EF}$ fights $\widetilde{F}$ for $L3$\\
+      Lower $k_C$ so $m_R \mid k_C$&Avoid fringe performance issues\\
     \end{tabular}
     \caption{Tweaks needed to make \gemm{} fusion work}
     \label{tab:gemm3-issues}
   \end{table}
+  \begin{itemize}
+  \item Low $\widetilde{F}$ reuse remains a problem
+    \begin{itemize}
+    \item Low impact in practice
+    \end{itemize}
+  \end{itemize}
 \end{frame}
 
 \begin{frame}
@@ -297,7 +302,6 @@
       \item Extended to support three matrices
       \item Implement both \gemmt{} and BLIS algorithm
       \item BLIS algorithm port performs like BLIS
-      \item Experiments on Haswell machine from UT lab
       \end{itemize}
     \end{column}
     \begin{column}{0.5\textwidth}

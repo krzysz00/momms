@@ -34,7 +34,7 @@
 \useoutertheme{infolines}
 \setbeamertemplate{navigation symbols}{}
 
-\title[\gemmt{}]{\gemmt{}: Constant-workspace high-performance multiplication of three matrices for matrix chaining}
+\title[\gemmt{}]{\gemmt{}: Constant-Workspace High-Performance Multiplication of Three Matrices for Matrix Chaining}
 \author[Drewniak]{Krzysztof A. Drewniak}
 \institute[UT Austin]{The University of Texas at Austin}
 \date[]{April 13, 2018}
@@ -81,6 +81,7 @@
     \end{itemize}
   \item All multiply three matrices as a subproblem
   \item (Notation: $G \pluseq DEF$ and \gemmt{})
+  \item Not everything divides well this way
   \end{itemize}
 \end{frame}
 
@@ -157,14 +158,38 @@
   \frametitle{Data reuse}
   \begin{itemize}
   \item Every loop reads \emph{something} repeatedly
-  \item Relevant things: packed regions --- making them takes time
-  \item Packed region reuse when:
-    \begin{itemize}
-    \item $m$ large --- many blocks of $A$ per $\widetilde{B}$
-    \item $n$ large --- many column panels in $\widetilde{B}$
-    \item $k$ not tiny --- more time in microkernel
-    \end{itemize}
   \end{itemize}
+  Want:
+  \begin{adjustbox}{max size={!}{0.75\textheight},center}
+  \begin{tikzpicture}
+    \matrix (pics)[column sep=0.2cm, row sep=3ex, ampersand replacement=\&] {
+      \node {$m$ large};\&
+      \hgrids[l2]{mA}{1}{0.75}{4}{}
+      \node[at={(mA4)}] {$\vdots$};
+      \bracelabel{mA1.north west}{mA1.south west}{left}{$m_C$}
+      \bracelabel{mA1.north east}{mA4.south east}{right}{$m$}\&
+      \node[at={(0, -1.5)}] {\Large $\times$};\&
+      \node[wide-mat,l3] (mB) {$\widetilde{B}$};\\
+
+      \node {$n$ large};\&
+      \node[rectangle,draw,fit={(0, 0) (1, -1)},inner sep=0, l2] (nA) {$\widetilde{A}$};\&
+      \node[at={(0, -0.4)}] {\Large $\times$};\&
+      \vgrids[l3]{nB}{0.75}{1}{4}{}
+      \node[at={(nB4)}] {$\cdots$};
+      \bracelabel{nB1.north west}{nB1.north east}{above}{$n_R$}
+      \bracelabel{nB1.south west}{nB4.south east}{below}{$\leq n_C$}\\
+
+      \node {$k$ near $k_C$};\&
+      \vgrids[l2]{kA}{0.25}{1}{12}{}
+      \bracelabel{kA1.south west}{kA12.south east}{below}{$k \mod k_C$}
+      \bracelabel{kA1.north west}{kA1.north east}{above}{$1$}\&
+      \node[at={(0, -1.5)}] {\Large $\times$};\&
+      \hgrids[l1]{kB}{1}{0.25}{12}{}
+      \bracelabel{kB1.north east}{kB12.south east}{right}{$k \mod k_C$}
+      \bracelabel{kB1.north west}{kB1.south west}{left}{$1$}\\
+    };
+  \end{tikzpicture}
+  \end{adjustbox}
 \end{frame}
 
 \section[\gemmt{}]{The \gemmt{} algorithm}
@@ -235,7 +260,7 @@
   \begin{adjustbox}{max size={!}{0.5\textheight},center}
   \begin{tikzpicture}
     \matrix (pics)[column sep=0.2cm, row sep=5.5ex, ampersand replacement=\&] {
-      \node[wide-mat, l3] (0EF) {\large $\widetilde{EF} \colon k_C \times n_C$};\&
+      \node[wide-mat] (0EF) {\large $EF \colon k_C \times n_C$};\&
       \node[at={(0, -0.5)}] {\large $=$};\&
       \node[wide-mat] (0E) {\large $E \colon k_C \times l$};\&
       \node[square-mat] (0F) {\large $F \colon l \times n_C$};\\
@@ -246,30 +271,126 @@
   \item Only point to compute $EF$ in constant memory
   \item \gemm{} algorithm needs tweaks
   \end{itemize}
-
 \end{frame}
 
 \begin{frame}
-  \frametitle{Deriving \gemmt{}: The tricky bits}
-  \begin{table}
-    \centering
-    \begin{tabular}{l|l}
-      Change&Why?\\\hline\hline
-      Remove outermost loop&Redundant ($n \leq n_C$)\\
-      Microkernel writes packed format&Save space/time\\
-      Halve $n_C$&$\widetilde{EF}$ fights $\widetilde{F}$ for $L3$\\
-      Lower $k_C$ so $m_R \mid k_C$&Avoid fringe performance issues\\
-    \end{tabular}
-    \caption{Tweaks needed to make \gemm{} fusion work}
-    \label{tab:gemm3-issues}
-  \end{table}
-  \begin{itemize}
-  \item Low $\widetilde{F}$ reuse remains a problem
-    \begin{itemize}
-    \item Low impact in practice
-    \end{itemize}
-  \end{itemize}
+  \frametitle{Inner algorithm tweaks: Removing the outer loop}
+  \begin{adjustbox}{max size={!}{0.87\textheight},center}
+  \begin{tikzpicture}
+    \input{blis-picture}
+    \draw[very thick,color=red] ($(3B.north east) + (10pt, 10pt)$) -- ($(3C.south west) + (-10pt, -10pt)$)
+    ($(3C.north west) + (-10pt, 10pt)$) -- ($(3B.south east) + (10pt, -10pt)$);
+  \end{tikzpicture}
+  \end{adjustbox}
 \end{frame}
+
+\begin{frame}
+  \frametitle{Inner alg.\ tweaks: Microkernel packed writes}
+  \begin{adjustbox}{max size={0.95\textwidth}{!},center}
+    \begin{tikzpicture}
+      \matrix (pics)[column sep=0.2cm, row sep=3ex, ampersand replacement=\&] {
+          \node[rectangle,draw,fit={(0, 0) (3, -2)},inner sep=0] (EFup) {$EF$};
+          \bracelabel{EFup.north west}{EFup.south west}{left}{$k_C$}
+          \bracelabel{EFup.north west}{EFup.north east}{above}{$n_C$}\&
+          \node[at={(0,-1)}] {\large $\Rightarrow$};\&
+          \vgrids[l3]{EFp}{1}{2}{3}{\bpackarr[4]{\x}}
+          \path (EFp1.north west) -- (EFp3.north east) node[midway,label={above:$\widetilde{EF}$}] {};\\
+    };
+  \end{tikzpicture}
+  \end{adjustbox}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Inner alg.\ tweaks: Halving $n_C$}
+  \begin{adjustbox}{max size={0.95\textwidth}{!},center}
+    \begin{tikzpicture}
+      \node[draw, rectangle, at={(0, 0)}, anchor=north west, minimum width=7.5cm, minimum height=2.5cm] (l3cache) {};
+      \node[below, at={(l3cache.north)}] {L3 Cache};
+      \node[draw, rectangle, anchor=north west, at={(0.5, -0.75)}, l3, minimum width=3cm, minimum height=1cm] (F) {$\widetilde{F}$};
+      \node[draw, rectangle, anchor=north west, at={(4, -0.75)}, l3, minimum width=3cm, minimum height=1cm] (EF) {$\widetilde{EF}$};
+      \bracelabel{l3cache.south west}{l3cache.south east}{below}{BLIS $n_C$}
+      \bracelabel{F.south west}{F.south east}{below}{$n_C$}
+      \bracelabel{EF.south west}{EF.south east}{below}{$n_C$}
+  \end{tikzpicture}
+  \end{adjustbox}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Inner alg\. tweaks: Small $k_C$ reduction}
+  \begin{adjustbox}{max size={0.95\textwidth}{!},center}
+    \begin{tikzpicture}
+      \hgrids[l2]{E}{3}{1}{3}{}
+      \path (E1.north west) -- (E1.north east) node [midway,label={above:$\widetilde{E}$}] {};
+      \node[rectangle, draw, l2, fit={(0, -3) (3, -3.25)}, inner sep=0] (E4) {};
+      \bracelabel{E4.south west}{E4.south east}{below}{$l_C$}
+      \begin{scope}[visible on=<-1>]
+        \bracelabel{E1.north west}{E4.south west}{left}{$k_C$}
+      \end{scope}
+      \begin{scope}[visible on=<2->]
+        \bracelabel{E1.north west}{E3.south west}{left}{$k_C$}
+      \end{scope}
+      \bracelabel{E1.north east}{E1.south east}{right}{$m_R$}
+      \draw[very thick,color=red,visible on=<2->] (E4.north west) -- (E4.south east)
+      (E4.south west) -- (E4.north east);
+  \end{tikzpicture}
+\end{adjustbox}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Deriving \gemmt{}: The small drawback}
+  Problem shape:
+
+  \begin{adjustbox}{max size={!}{0.5\textheight},center}
+  \begin{tikzpicture}
+    \matrix (pics)[column sep=0.2cm, row sep=5.5ex, ampersand replacement=\&] {
+      \node[wide-mat,l3] (0EF) {\large $\widetilde{EF} \colon k_C \times n_C$};\&
+      \node[at={(0, -0.5)}] {\large $=$};\&
+      \node[wide-mat] (0E) {\large $E \colon k_C \times l$};\&
+      \node[square-mat] (0F) {\large $F \colon l \times n_C$};\\
+    };
+  \end{tikzpicture}
+  \end{adjustbox}
+
+  Reuse problem: $m$ small
+
+  \begin{adjustbox}{max size={!}{0.5\textheight},center}
+  \begin{tikzpicture}
+    \matrix (pics)[column sep=0.2cm, row sep=3ex, ampersand replacement=\&] {
+      \hgrids[l2]{mA}{1}{0.75}{4}{}
+      \bracelabel{mA1.north west}{mA1.south west}{left}{$m_C$}
+      \bracelabel{mA1.north east}{mA2.south east}{right}{$k_C$}
+      \draw[very thick, color=red] (mA3.north west) -- (mA3.south east)
+      (mA3.south west) -- (mA3.north east)
+      (mA4.north west) -- (mA4.south east)
+      (mA4.south west) -- (mA4.north east);\&
+      \node[at={(0, -1.5)}] {\Large $\times$};\&
+      \node[wide-mat,l3] (mB) {$\widetilde{F}$};\\
+    };
+  \end{tikzpicture}
+  \end{adjustbox}
+\end{frame}
+
+% \begin{frame}
+%   \frametitle{Deriving \gemmt{}: The tricky bits}
+%   \begin{table}
+%     \centering
+%     \begin{tabular}{l|l}
+%       Change&Why?\\\hline\hline
+%       Remove outermost loop&Redundant ($n \leq n_C$)\\
+%       Microkernel writes packed format&Save space/time\\
+%       Halve $n_C$&$\widetilde{EF}$ fights $\widetilde{F}$ for $L3$\\
+%       Lower $k_C$ so $m_R \mid k_C$&Avoid fringe performance issues\\
+%     \end{tabular}
+%     \caption{Tweaks needed to make \gemm{} fusion work}
+%     \label{tab:gemm3-issues}
+%   \end{table}
+%   \begin{itemize}
+%   \item Low $\widetilde{F}$ reuse remains a problem
+%     \begin{itemize}
+%     \item Low impact in practice
+%     \end{itemize}
+%   \end{itemize}
+% \end{frame}
 
 \begin{frame}
   \frametitle{The algorithm}
@@ -283,6 +404,18 @@
 
 \begin{frame}
   \frametitle{$G \pluseq (DE)F$}
+    \begin{adjustbox}{max size={!}{0.5\textheight},center}
+  \begin{tikzpicture}
+    \matrix (pics)[column sep=0.2cm, row sep=3ex, ampersand replacement=\&] {
+      \node{Ex: Don't};\&
+      \node[tall-mat] (D) {$D$};\&
+      \node[wide-mat] (E) {\large $E$};
+      \bracelabel{E.north west}{$(0, -3)$}{left}{}\&
+      \node[square-mat] (F) {\large $F$};
+      \bracelabel{F.north east}{F.south east}{right}{}\\
+    };
+  \end{tikzpicture}
+  \end{adjustbox}
   \begin{itemize}
   \item Putting parentheses there sometimes better
   \item Deriving directly doesn't work --- bad shape
@@ -302,6 +435,7 @@
       \item Extended to support three matrices
       \item Implement both \gemmt{} and BLIS algorithm
       \item BLIS algorithm port performs like BLIS
+      \item Machine: 3.5 GHz (one core used), 15 GB RAM, 32 KB $L1$ cache, 256 KB $L2$, 8 MB $L3$. Peak perf 56 GFLOPS/s.
       \end{itemize}
     \end{column}
     \begin{column}{0.5\textwidth}
@@ -395,7 +529,7 @@
   \item Prof.\ Robert van de Geijn --- advising and providing inspiration
   \item Dr.\ Tyler Smith --- writing MOMMS and algorithm design
   \item Prof.\ Tze Meng Low --- performance fixes
-  \item NSF grant \textbf{TODO NNNNNNN} --- funding
+  \item NSF awards CCF-1714091 and ACI-1550493 --- funding
   \end{itemize}
 \end{frame}
 

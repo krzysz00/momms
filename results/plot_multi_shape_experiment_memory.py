@@ -25,7 +25,7 @@ narrow_exper[argv[2]] = narrow_exper.apply(lambda r:
                                            memory_mine(r["m"], r["n"],
                                                        r["k"], r["l"]),
                                            axis=1)
-narrow_exper["MOMMS BLIS algo."] = narrow_exper.apply(lambda r:
+narrow_exper["Pair of gemm()"] = narrow_exper.apply(lambda r:
                                                       memory_goto(r["m"], r["n"],
                                                                   r["k"], r["l"]),
                                                       axis=1)

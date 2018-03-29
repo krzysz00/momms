@@ -19,11 +19,11 @@ exper = pd.read_csv(argv[1], sep='\t', comment='#', float_precision="high",
 exper[argv[2]] = exper.apply(lambda r: memory_mine(r["m"], r["n"],
                                                    r["k"], r["l"]),
                              axis=1)
-exper["MOMMS BLIS algo."] = exper.apply(lambda r: memory_goto(r["m"], r["n"],
+exper["Pair of gemm()"] = exper.apply(lambda r: memory_goto(r["m"], r["n"],
                                                               r["k"], r["l"]),
                             axis=1)
 
-to_plot = exper[["m", argv[2], "MOMMS BLIS algo."]].copy()
+to_plot = exper[["m", argv[2], "Pair of gemm()"]].copy()
 to_plot.set_index("m", inplace=True)
 x_max = int(ceil(to_plot.index[-1] / 1000.0)) * 1000
 ax = to_plot.plot(title=argv[3], xlim=(0, x_max), style=['r-', 'c--'])

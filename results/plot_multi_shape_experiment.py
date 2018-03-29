@@ -16,7 +16,7 @@ if len(argv) < 4:
 narrow_exper = pd.read_csv(argv[1], sep='\t', comment='#',
                            float_precision="high", header=None,
                            names=["m", "n", "k", "l",
-                                  argv[2], "MOMMS BLIS algo.",
+                                  argv[2], "Pair of gemm()",
                                   "error"])
 narrow_exper["Narrowed Dim."] = narrow_exper[["m", "n", "k", "l"]].idxmin(axis=1)
 narrow_exper["N"] = narrow_exper.apply(lambda row:

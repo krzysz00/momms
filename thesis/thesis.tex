@@ -24,7 +24,7 @@
 \newcommand*{\mycite}[1]{~\cite{#1}}
 
 \usepackage{hyperref}
-\usepackage{biblatex}
+\usepackage[maxbibnames=15]{biblatex}
 
 \addbibresource{cites.bib}
 
@@ -60,7 +60,7 @@ These algorithms all assume that the only operation available is the multiplicat
 
 In practice, a more general version of this problem appears, where matrices can be transposed and/or inverted, or have properties such as being upper triangular\mycite{Barthels2018}.
 For example, an algorithm to compute the ensemble Kalman filter\mycite{Rao2017} (which computes parameters for physical systems from noisy data) requires the computation of the expression $X_i^b S_i (Y_i^b)^T R_i^{-1}$, which features one transposition and one inverse.
-Other examples of the generalized matrix chain problem include the expression $L^{-1}AL^{-H}$ (where $L$ is lower triangular and $A$ is symmetric), which is knows as the two-sided triangular solve\mycite{Parikh2017} and $\tau_u\tau_v vv^TAuu^T$ (where the $\tau_i$ are scalars and $v$ and $u$ are vectors), which appears in an algorithm for reducing a matrix to tridiagonal form\mycite{Choi1995}.
+Other examples of the generalized matrix chain problem include the expression $L^{-1}AL^{-H}$ (where $L$ is lower triangular and $A$ is symmetric), which is knows as the two-sided triangular solve\mycite{Poulson2011} and $\tau_u\tau_v vv^TAuu^T$ (where the $\tau_i$ are scalars and $v$ and $u$ are vectors), which appears in an algorithm for reducing a matrix to tridiagonal form\mycite{Choi1995}.
 
 The BLAS\mycite{blas_standard} and LAPACK\mycite{lapack_ug} libraries provide many high-performance functions that can assist in the computation of such matrix chains, such as specialized functions for the multiplication of triangular matrices (\textsc{trmm}).
 However, manually determining how to use these functions and coding in term of them requires expert knowledge.
@@ -372,7 +372,7 @@ This transformation can be performed at effectively no cost by re-interpreting t
 To test our algorithm's performance, we implemented both it and the BLIS algorithm in the Multilevel Optimization for Matrix Multiply Sandbox (MOMMS), which was developed for\mycite{SmithDiss2017}.
 This framework allowed us to declaratively generate the code for an algorithm by specifying the series of loops and packing operations required, and allowed us to interface to the BLIS microkernels.
 Initially, we verified that the MOMMS implementation of the BLIS algorithm had similar performance to the reference implementation, which was written in C.
-Then, we modified the MOMMS framework to support generating code for multiplying three matrices together.
+Then, we modified the MOMMS framework to support generating code for multiplying three matrices.
 These modifications allowed us to express both our \gemmt{} algorithm and the typical $T = EF; G \pluseq DT$ method we were comparing against.
 
 We tested the performance, in billions of floating point operations (GFLOPS) per second, of both our algorithm and the typical approach.

@@ -6,7 +6,7 @@ author = {Smith, Tyler Michael and van de Geijn, Robert A.},
 eprint = {1702.02017},
 file = {:home/krzys/Documents/fall-2017/thesis-papers/Pushing the Bounds for Matrix-Matrix Multiplication - Smith, van de Geijn.pdf:pdf},
 mendeley-groups = {FLAME and BLIS},
-pages = {1--11},
+OPTpages = {1--11},
 title = {{Pushing the Bounds for Matrix-Matrix Multiplication}},
 url = {http://arxiv.org/abs/1702.02017},
 year = {2017}
@@ -21,7 +21,7 @@ isbn = {3540290672},
 issn = {03029743},
 journal = {Lecture Notes in Computer Science (including subseries Lecture Notes in Artificial Intelligence and Lecture Notes in Bioinformatics)},
 mendeley-groups = {FLAME and BLIS},
-pages = {256--265},
+OPTpages = {256--265},
 title = {{A family of high-performance matrix multiplication algorithms}},
 volume = {3732 LNCS},
 year = {2006}
@@ -31,11 +31,11 @@ year = {2006}
 author = {Low, Tze Meng and Igual, Francisco D. and Smith, Tyler M. and Quintana-Orti, Enrique S.},
 doi = {10.1145/2925987},
 file = {:home/krzys/Documents/fall-2017/thesis-papers/Analytical Modeling Is Enough for High-Performance BLIS - Low et al.pdf:pdf},
-issn = {00983500},
+issn = {0098-3500},
 journal = {ACM Transactions on Mathematical Software},
 mendeley-groups = {FLAME and BLIS},
 number = {2},
-pages = {1--18},
+OPTpages = {1--18},
 title = {{Analytical Modeling Is Enough for High-Performance BLIS}},
 url = {http://dl.acm.org/citation.cfm?doid=2988256.2925987},
 volume = {43},
@@ -49,8 +49,8 @@ mendeley-groups = {FLAME and BLIS},
 school = {The University of Texas at Austin},
 title = {{Theory and Practice of Classical Matrix-Matrix Multiplication for Hierarchical Memory Architectures}},
 type = {PhD},
-url = {https://repositories.lib.utexas.edu/bitstream/handle/2152/63352/SMITH-DISSERTATION-2017.pdf?sequence=1{\&}isAllowed=y},
-year = {2017}
+url = {http://hdl.handle.net/2152/63352},
+year = {2018}
 }
 
 @article{Goto2008,
@@ -63,7 +63,7 @@ issn = {00983500},
 journal = {ACM Transactions on Mathematical Software},
 mendeley-groups = {FLAME and BLIS},
 number = {3},
-pages = {1--25},
+OPTpages = {1--25},
 title = {{Anatomy of high-performance matrix multiplication}},
 url = {http://portal.acm.org/citation.cfm?doid=1356052.1356053},
 volume = {34},
@@ -75,10 +75,10 @@ author = {Barthels, Henrik and Copik, Marcin and Bientinesi, Paolo},
 booktitle = {Proceedings of the 2018 International Symposium on Code Generation and Optimization},
 doi = {10.1145/3168804},
 file = {:home/krzys/Documents/fall-2017/thesis-papers/The Generalized Matrix Chain Algorithm - Barthels, Copik, Bientinesi.pdf:pdf},
-isbn = {9781450356176},
+isbn = {978-1-4503-5617-6},
 keywords = {compiler,linear algebra,matrix chain problem},
 mendeley-groups = {FLAME and BLIS},
-pages = {138--148},
+OPTpages = {138--148},
 publisher = {ACM},
 title = {{The Generalized Matrix Chain Algorithm}},
 url = {https://dl.acm.org/citation.cfm?id=3168804},
@@ -92,7 +92,7 @@ file = {:home/krzys/Documents/fall-2017/thesis-papers/0213017.pdf:pdf},
 journal = {SIAM Journal on Computing},
 mendeley-groups = {FLAME and BLIS},
 number = {2},
-pages = {228----251},
+OPTpages = {228----251},
 title = {{Computation of matrix chain products. Part II}},
 url = {http://epubs.siam.org/doi/pdf/10.1137/0213017},
 volume = {13},
@@ -100,13 +100,22 @@ publisher = {SIAM},
 year = {1984}
 }
 
-@techreport{Choi1995,
-author = {Choi, Jaeyoung and Dongarra, Jack J and Walker, David W},
-file = {:home/krzys/Documents/fall-2017/thesis-papers/The{\_}Design{\_}of{\_}a{\_}Parallel{\_}Dense{\_}Linear{\_}Algebra{\_}Soft.pdf:pdf},
-institution = {Oak Ridge National Laboratory},
-mendeley-groups = {FLAME and BLIS},
-title = {{The Design of a Parallel Dense Linear Algebra Software Library: Reduction To Hessenberg, Tridiagonal, and Bidiagonal Form}},
-year = {1995}
+@Article{Choi1995,
+author="Choi, Jaeyoung
+and Dongarra, Jack J.
+and Walker, David W.",
+title="The design of a parallel dense linear algebra software library: Reduction to Hessenberg, tridiagonal, and bidiagonal form",
+journal="Numerical Algorithms",
+year="1995",
+OPTmonth="Sep",
+OPTday="01",
+volume="10",
+number="2",
+OPTpages="379--399",
+abstract="This paper discusses issues in the design of ScaLAPACK, a software library for performing dense linear algebra computations on distributed memory concurrent computers. These issues are illustrated using the ScaLAPACK routines for reducing matrices to Hessenberg, tridiagonal, and bidiagonal forms. These routines are important in the solution of eigenproblems. The paper focuses on how building blocks are used to create higher-level library routines. Results are presented that demonstrate the scalability of the reduction routines. The most commonly-used building blocks used in ScaLAPACK are the sequencing BLAS, the parallel BLAS (PBLAS) and the Basic Linear Algebra Communication Subprograms (BLACS). Each of the matrix reduction algorithms consists of a series of steps in each of which one block column (orpanel), and/or block row, of the matrix is reduced, followed by an update of the portion of the matrix that has not been factorized so far. This latter phase is performed using Level 3 PBLAS operations and contains the bulk of the computation. However, the panel reduction phase involves a significant amount of communication, and is important in determining the scalability of the algorithm. The simplest way to parallelize the panel reduction phase is to replace the BLAS routines appearing in the LAPACK routine (mostly matrix-vector and matrix-matrix multiplications) with the corresponding PBLAS routines. However, in some cases it is possible to reduce communication startup costs by performing the communication necessary for consecutive BLAS operations in a single communication using a BLACS call. Thus, there is a tradeoff between efficiency and software engineering considerations, such as ease of programming and simplicity of code.",
+issn="1572-9265",
+doi="10.1007/BF02140776",
+url="https://doi.org/10.1007/BF02140776"
 }
 
 @article{Rao2017,
@@ -117,10 +126,11 @@ journal = {SIAM Journal on Scientific Computing},
 keywords = {4D-var,ADMM,Huber norm5463215674,data assimilation},
 mendeley-groups = {FLAME and BLIS},
 number = {3},
-pages = {548--570},
-title = {{Robust Data Assimilation Using {\$}L{\_}1{\$} and Huber Norms}},
+OPTpages = {548--570},
+title = {{Robust Data Assimilation Using $L_1$ and Huber Norms}},
 volume = {39},
-year = {2017}
+year = {2017},
+url = {https://epubs.siam.org/doi/pdf/10.1137/15M1045910}
 }
 
 @inproceedings{Barthels2017,
@@ -132,15 +142,20 @@ keywords = {2017,acm reference format,bientinesi,code generation,compiler,compil
 mendeley-groups = {FLAME and BLIS},
 publisher = {ACM},
 title = {{Linnea: Compiling Linear Algebra Expressions to High-Performance Code}},
-year = {2017}
+isbn = {978-1-4503-5288-8},
+doi = {10.1145/3115936.3115937},
+year = {2017},
+url = {http://hpac.rwth-aachen.de/~barthels/publications/PASCO_2017.pdf}
 }
 
 @inproceedings{Whaley1998,
 author = {Whaley, Clint R and Dongarra, Jack J},
 booktitle = {Proceedings of the 1998 ACM/IEEE conference on Supercomputing},
 file = {:home/krzys/Documents/fall-2017/thesis-papers/10.1.1.143.3947.pdf:pdf},
-pages = {1----27},
+OPTpages = {1----27},
 publisher = {ACM},
+isbn = {0-89791-984-X},
+url = {https://dl.acm.org/citation.cfm?id=509096},
 title = {{Automatically Tuned Linear Algebra Software}},
 year = {1998}
 }
@@ -155,7 +170,20 @@ number = {2},
 title = {{The BLIS Framework: Experiments in Portability}},
 volume = {42},
 year = {2016},
-publisher = {ACM}
+publisher = {ACM},
+doi = {10.1145/2755561},
+url = {https://dl.acm.org/citation.cfm?doid=2936306.2755561}
+}
+
+@TechReport{Poulson2011,
+  author = {Jack Poulson and Robert van de Geijn and Jeffrey Bennighof},
+  title = {Parallel Algorithms for Reducing the Generalized Hermitian-Definite Eigenvalue Problem.  {FLAME} {W}orking {N}ote \#56},
+  institution = {The University of Texas at Austin, Department of Computer Sciences},
+  type = {Technical Report},
+  number = {TR-11-05},
+  OPTmonth = FEB,
+  year = {2011},
+  url = {https://www.cs.utexas.edu/users/flame/pubs/FLAWN56.pdf}
 }
 
 @unpublished{Parikh2017,
@@ -167,7 +195,7 @@ eprint = {arXiv:1710.04286v1},
 file = {:home/krzys/Documents/fall-2017/thesis-papers/1710.04286.pdf:pdf},
 institution = {University of Texas at Austin},
 mendeley-groups = {FLAME and BLIS},
-pages = {1--12},
+OPTpages = {1--12},
 series = {FLAME Working Notes},
 title = {{Deriving Correct High-Performance Algorithms}},
 url = {https://arxiv.org/abs/1710.04286},
@@ -181,7 +209,8 @@ year = {2017}
   year = {1992},
   type = {Theory Center Technical Report},
   number = {CTC92TR89},
-  month = {2},
+  url = {http://hdl.handle.net/1813/5471},
+  OPTmonth = {2},
 }
 
 @BOOK{lapack_ug,
@@ -194,10 +223,26 @@ year = {2017}
       PUBLISHER = {Society for Industrial and Applied Mathematics},
       YEAR = {1999},
       ADDRESS = {Philadelphia, PA},
-      ISBN = {0-89871-447-8 (paperback)}
+      ISBN = {0-89871-447-8 (paperback)},
+      DOI = {10.1137/1.9780898719604},
+      URL = {https://epubs.siam.org/doi/book/10.1137/1.9780898719604}
 }
 
 @article{blas_standard,
+author = {Jack J. Dongarra and Du Croz, Jeremy and Sven Hammarling and
+Iain Duff},
+title = {A Set of Level 3 Basic Linear Algebra Subprograms},
+journal = {Transactions on Mathematical Systems},
+volume = 16,
+number = 1,
+OPTpages = {1-17},
+year = 1990,
+doi = {10.1145/77626.79170},
+url = {https://dl.acm.org/citation.cfm?id=79170}
+}
+
+
+article{blas_standard,
   title={Basic linear algebra subprograms technical {(BLAST)} forum standard},
   author={Dongarra, Jack},
   journal={The International Journal of High Performance Computing Applications},
@@ -206,4 +251,13 @@ year = {2017}
   pages={115--115},
   year={2002},
   publisher={SAGE Publications Sage UK: London, England}
+}
+
+techreport{Choi1995,
+author = {Choi, Jaeyoung and Dongarra, Jack J and Walker, David W},
+file = {:home/krzys/Documents/fall-2017/thesis-papers/The{\_}Design{\_}of{\_}a{\_}Parallel{\_}Dense{\_}Linear{\_}Algebra{\_}Soft.pdf:pdf},
+institution = {Oak Ridge National Laboratory},
+mendeley-groups = {FLAME and BLIS},
+title = {{The Design of a Parallel Dense Linear Algebra Software Library: Reduction To Hessenberg, Tridiagonal, and Bidiagonal Form}},
+year = {1995}
 }

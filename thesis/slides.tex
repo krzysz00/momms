@@ -324,10 +324,10 @@
       \node[rectangle, draw, l2, fit={(0, -3) (3, -3.25)}, inner sep=0] (E4) {};
       \bracelabel{E4.south west}{E4.south east}{below}{$l_C$}
       \begin{scope}[visible on=<-1>]
-        \bracelabel{E1.north west}{E4.south west}{left}{$k_C$}
+        \bracelabel{E1.north west}{E4.south west}{left}{$k_C \mod m_C$}
       \end{scope}
       \begin{scope}[visible on=<2->]
-        \bracelabel{E1.north west}{E3.south west}{left}{$k_C$}
+        \bracelabel{E1.north west}{E3.south west}{left}{$k_C \mod m_C$}
       \end{scope}
       \bracelabel{E1.north east}{E1.south east}{right}{$m_R$}
       \draw[very thick,color=red,visible on=<2->] (E4.north west) -- (E4.south east)
@@ -389,7 +389,7 @@
   \begin{tikzpicture}
     \matrix (pics)[column sep=0.2cm, row sep=3ex, ampersand replacement=\&] {
       \hgrids[l2]{mA}{1}{0.75}{4}{}
-      \bracelabel{mA1.north west}{mA1.south west}{left}{$m_R$}
+      \bracelabel{mA1.north west}{mA1.south west}{left}{$m_C$}
       \bracelabel{mA1.north east}{mA2.south east}{right}{$k_C$}
       \draw[very thick, color=red] (mA3.north west) -- (mA3.south east)
       (mA3.south west) -- (mA3.north east)

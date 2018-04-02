@@ -64,7 +64,7 @@ Other examples of the generalized matrix chain problem include the expression $L
 
 The BLAS\mycite{blas_standard} and LAPACK\mycite{lapack_ug} libraries provide many high-performance functions that can assist in the computation of such matrix chains, such as specialized functions for the multiplication of triangular matrices (\textsc{trmm}).
 However, manually determining how to use these functions and coding in term of them requires expert knowledge.
-Existing high-level systems, such at Matlab and Julia, which are commonly used by non-experts, generally compute generalized matrix chains in a naive way, such as proceeding from left to right, which is often ineffecient.
+Existing high-level systems, such as Matlab and Julia, which are commonly used by non-experts, generally compute generalized matrix chains in a naive way, such as proceeding from left to right, which is often ineffecient.
 Systems such as Linnea\mycite{Barthels2017} have emerged recently that attack the generalized matrix chain problem and automatically generate a high-performance program for a given expression in term of high-performance operations such as matrix-matrix multiply.
 
 Returning to the example matrix chains above, we can observe that they often contain the multiplication of three matrices as a subproblem, often after some preprocessing such as an inversion or an outer product.
@@ -94,7 +94,7 @@ If we consider a $m' \times n'$ subregion $M'$ of a matrix $M$, we will say that
 If $m'$ is much smaller than $n'$, then $M'$ is a \emph{row panel}, while having $n'$ much smaller than $m'$ makes $M'$ a \emph{column panel} of $M$.
 
 There are two specialized primitives that appear in high-performance \gemm{}: the \emph{microkernel} and \emph{macrokernel}.
-The microkernel is a highly-tuned, hand-written function (almost always implemented in assembly) that multiplies an $m_R \times k$ row panel of $A$ by an $k \times n_R$ column panel of $B$ to update an $m_R \times n_R$ block of $C$, which is updated in registers and written to memory.
+The microkernel is a highly-tuned, hand-written function (almost always implemented in assembly) that multiplies an $m_R \times k$ row panel of $A$ by a $k \times n_R$ column panel of $B$ to update an $m_R \times n_R$ block of $C$, which is updated in registers and written to memory.
 An illustration of the microkernel is located in Algorithm \ref{alg:macrokernel}.
 (In this illustration, as with all others in this work, constants that appear twice indicate the dimension along which each loop proceeds, along with the stride.)
 The parameters $m_R$ and $n_R$ are based on the microarchitecture of the CPU, which can be derived analytically\mycite{Low2016} or by autotuning\mycite{Whaley1998}.
@@ -207,7 +207,7 @@ Since the $L3$ cache is, in practice, very large and somewhat slow, $n_C$ is com
 
 \subsection{Data reuse in  matrix multiplication}
 Examining the loops in the BLIS algorithm, as was done in\mycite{Low2016}, shows that each loop causes some data from the computation to be reused, that is, read or written in its entirety during each iteration of the loop.
-For example, the micro-kernel reuses the small block of $C'$ that is stored in registers while looping over the panels.
+For example, the microkernel reuses the small block of $C'$ that is stored in registers while looping over the panels.
 
 Even though reuse occurs at each level of the algorithm, we will focus on the reuse of the packed buffers, as this is a key consideration for maintaining the performance of the algorithm, as shown by \mycite{Henry92}.
 Packing into $\widetilde{B}$ and $\widetilde{A}$ introduces overhead, which is time that is not usable for computation.
@@ -403,7 +403,7 @@ All the inputs were stored in column-major form, while the temporaries and outpu
 This unusual combination of input formats ensured a fair comparison between the two algorithms.
 In addition, we tested the $G^T = F^T(E^TD^T)$ case, in which all matrices were row major, for square inputs.
 
-a plot of the computed additional memory consumption (excluding inputs and outputs) for multiplying square matrices using both algorithm is shown in Figure \ref{fig:bc_square_mem}, demonstrating our approach's much lower memory usage.
+A plot of the computed additional memory consumption (excluding inputs and outputs) for multiplying square matrices using both algorithm is shown in Figure \ref{fig:bc_square_mem}, demonstrating our approach's much lower memory usage.
 
 The results of these experiments can be found in Figure \ref{fig:bc_square} for square matrices, and Figure \ref{fig:bc_rectangles} for the rectangular inputs.
 The $G \pluseq (DE)F$ experiment's results are in Figure \ref{fig:ab_square}.

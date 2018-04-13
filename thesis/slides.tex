@@ -45,12 +45,21 @@
 \end{frame}
 
 \section[Introduction]{Introduction}
+
+% \begin{frame}
+%   \frametitle{Motivation}
+%   \begin{center}
+%     \Large Common (sub)problem --- want nicer solution
+%   \end{center}
+% \end{frame}
+
 \begin{frame}
   \frametitle{Matrix chaining problem}
   \begin{itemize}
-  \item Problem: compute $A_1A_2\cdots A_n$ efficiently
-  \item $O(n \log n)$ algorithm, also $O(n^3)$ with dynamic programming
+  \item Problem: compute $A_1A_2\cdots A_N$ efficiently
+  \item $O(N \log N)$ algorithm\footnote{Hu and Shing, 1984}, also $O(N^3)$ with dynamic programming\footnote{Barthels 2018}
   \item Fewer flops $\to$ more performance?
+  \item Ex: $WXYZ$ $\Rightarrow$ $((WX)Y)Z$, $(WX)(YZ)$, $W(X(YZ))$, $\ldots$
   \end{itemize}
 \end{frame}
 
@@ -60,13 +69,13 @@
   \item In reality --- transposes, inverses, properties
   \item
     \begin{description}
-    \item[Ensemble Kalman filter] $X_i^b S_i (Y_i^b)^T R_i^{-1}$
-    \item[Tridiagonalization] $\tau_u\tau_vvv^TAuu^T$
-    \item[Two-sided triangular solve] $L^{-1}AL^{-H}$ ($L$ lower triangular)
+    \item[Ensemble Kalman filter\footnote{Rao 2017}] $X_i^b S_i (Y_i^b)^T R_i^{-1}$
+    \item[Tridiagonalization\footnote{Choi 1995}] $\tau_u\tau_vvv^TAuu^T$
+    \item[Two-sided triangular solve\footnote{Poulson 2011}] $L^{-1}AL^{-H}$ ($L$ lower triangular)
     \end{description}
-  \item Performance with BLAS/LAPACK -- must be expert
+  \item Performance with BLAS/LAPACK\footnote{Dongarra 1990, Anderson 1999} -- must be expert
   \item Less performance with  Matlab, numpy, etc. (left-to-right)
-  \item Linnea: expression $\to$ BLAS calls automagically
+  \item Linnea\footnote{Barthels 2018}: expression $\to$ BLAS calls automagically
   \end{itemize}
 \end{frame}
 
@@ -80,8 +89,7 @@
     \item$\bm{L^{-1}A(L^{-1})^H}$ ($L$ lower triangular)
     \end{itemize}
   \item All multiply three matrices as a subproblem
-  \item (Notation: $G \pluseq DEF$ and \gemmt{})
-  \item Not everything divides well this way
+  \item Not all problems subdivide like this
   \end{itemize}
 \end{frame}
 
@@ -89,7 +97,7 @@
   \frametitle{\gemmt{} --- Why a new algorithm?}
   \begin{itemize}
   \item Current approach: parentheses, multiply twice, store temporary $T$
-  \item $T$ often eats memory (\& perf)
+  \item $T$ often eats memory (\& performance)
   \item We can do better!
   \item Use how \gemm{} works to nest computations
   \item $O(1)$ extra memory, maybe more performance
@@ -131,7 +139,7 @@
 
 \begin{frame}
   \frametitle{\gemm{}: The kernels}
-  \begin{adjustbox}{max size={!}{0.87\textheight},center}
+  \begin{adjustbox}{max size={!}{0.82\textheight},center}
   \begin{tikzpicture}
     \input{macrokernel-picture}
     \path let \p{north} = (2-loop.north),
@@ -139,18 +147,20 @@
     \p{east} = (2-rect-east)
     in node [fit={(\x{west}, \y{north}) (1B1.south east) (\x{east}, \y{north})},
     fill=white, opacity=0.8, visible on=<-1>] (hide-square) {}
-    coordinate [visible on=<2->] (dummy-coord);
+    (\x{west}, \y{north}) -- (2-rect-west)
+    node [midway, label={[visible on=<2->]left:Macrokernel}] (macrokern-label) {};
   \end{tikzpicture}
-  \end{adjustbox}
+\end{adjustbox}
+\only<2->{\small Packing very important\footnote{Henry 1992}}
 \end{frame}
 
 \begin{frame}
-  \frametitle{\gemm{}: The algorithm}
-  \begin{adjustbox}{max size={!}{0.87\textheight},center}
+  \frametitle{\gemm{}: The algorithm\footnote{Goto 2008}}
+  \begin{adjustbox}{max size={!}{0.82\textheight},center}
   \begin{tikzpicture}
     \input{blis-picture}
   \end{tikzpicture}
-  \end{adjustbox}
+\end{adjustbox}
 \end{frame}
 
 
@@ -198,10 +208,18 @@
 \begin{frame}
   \frametitle{Key concept of the algorithm}
   \begin{itemize}
-  \item We want $G \pluseq DEF$, (dimensions: $m, k, l, n$ in order)
+  \item We want $G \pluseq D(EF)$, (dimensions: $m, k, l, n$ in order)
   \item $EF$ first needed in packing step
-  \item Compute a row panel then
+  \item Don't do computation until then
   \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \begin{adjustbox}{max size={!}{0.87\textheight},center}
+  \begin{tikzpicture}
+    \input{blis-picture}
+  \end{tikzpicture}
+  \end{adjustbox}
 \end{frame}
 
 \begin{frame}
@@ -285,7 +303,7 @@
 \end{frame}
 
 \begin{frame}
-  \frametitle{Inner alg.\ tweaks: Microkernel packed writes}
+  \frametitle{Inner algorithm tweaks: Microkernel packed writes}
   \begin{adjustbox}{max size={0.95\textwidth}{!},center}
     \begin{tikzpicture}
       \matrix (pics)[column sep=0.2cm, row sep=3ex, ampersand replacement=\&] {
@@ -301,14 +319,14 @@
 \end{frame}
 
 \begin{frame}
-  \frametitle{Inner alg.\ tweaks: Halving $n_C$}
+  \frametitle{Inner algorithm tweaks: Halving $n_C$}
   \begin{adjustbox}{max size={0.95\textwidth}{!},center}
     \begin{tikzpicture}
       \node[draw, rectangle, at={(0, 0)}, anchor=north west, minimum width=7.5cm, minimum height=2.5cm] (l3cache) {};
       \node[below, at={(l3cache.north)}] {L3 Cache};
       \node[draw, rectangle, anchor=north west, at={(0.5, -0.75)}, l3, minimum width=3cm, minimum height=1cm] (F) {$\widetilde{F}$};
       \node[draw, rectangle, anchor=north west, at={(4, -0.75)}, l3, minimum width=3cm, minimum height=1cm] (EF) {$\widetilde{EF}$};
-      \bracelabel{l3cache.south west}{l3cache.south east}{below}{BLIS $n_C$}
+      \bracelabel{l3cache.south west}{l3cache.south east}{below}{\gemm{} $n_C$}
       \bracelabel{F.south west}{F.south east}{below}{$n_C$}
       \bracelabel{EF.south west}{EF.south east}{below}{$n_C$}
   \end{tikzpicture}
@@ -316,7 +334,7 @@
 \end{frame}
 
 \begin{frame}
-  \frametitle{Inner alg\. tweaks: Small $k_C$ reduction}
+  \frametitle{Inner algorithm tweaks: Small $k_C$ reduction}
   \begin{adjustbox}{max size={0.95\textwidth}{!},center}
     \begin{tikzpicture}
       \hgrids[l2]{E}{3}{1}{3}{}
@@ -402,47 +420,26 @@
   \end{adjustbox}
 \end{frame}
 
-\begin{frame}
-  \frametitle{$G \pluseq (DE)F$}
-    \begin{adjustbox}{max size={!}{0.5\textheight},center}
-  \begin{tikzpicture}
-    \matrix (pics)[column sep=0.2cm, row sep=3ex, ampersand replacement=\&] {
-      \node{Ex: Don't};\&
-      \node[tall-mat] (D) {$D$};\&
-      \node[wide-mat] (E) {\large $E$};
-      \bracelabel{E.north west}{$(0, -3)$}{left}{}\&
-      \node[square-mat] (F) {\large $F$};
-      \bracelabel{F.north east}{F.south east}{right}{}\\
-    };
-  \end{tikzpicture}
-  \end{adjustbox}
-  \begin{itemize}
-  \item Putting parentheses there sometimes better
-  \item Deriving directly doesn't work --- bad shape
-  \item However, $G \pluseq (DE)F \Leftrightarrow G^T \pluseq F^T(E^TD^T)$
-  \end{itemize}
-\end{frame}
-
 \section[Results]{Experiments and Results}
 \frame{\sectionpage}
 
 \begin{frame}
   \frametitle{Implementation details}
   \begin{columns}
-    \begin{column}{0.5\textwidth}
+    \begin{column}{0.55\textwidth}
       \begin{itemize}
-      \item Multilevel Optimization of Matrix Multiply Sandbox (MOMMS)
+      \item Multilevel Optimization of Matrix Multiply Sandbox (MOMMS)\footnote[frame]{Smith 2018}
       \item Extended to support three matrices
-      \item Implement both \gemmt{} and BLIS algorithm
-      \item BLIS algorithm port performs like BLIS
+      \item Implement both \gemmt{} and pair of \gemm{} algorithms
+      \item \gemm{} (from BLIS\footnote[frame]{van Zee 2016}) port performs like BLIS
       \item Machine: 3.5 GHz (one core used), 15 GB RAM, 32 KB $L1$ cache, 256 KB $L2$, 8 MB $L3$. Peak perf 56 GFLOPS/s.
       \end{itemize}
     \end{column}
-    \begin{column}{0.5\textwidth}
+    \begin{column}{0.45\textwidth}
       \begin{table}
         \centering
         \begin{tabular}{l|c c}
-          &\gemmt{}&BLIS algorithm\\ \hline
+          &\gemmt{}&\gemm{} algorithm\\ \hline
           $m_R$&6&6\\
           $n_R$&8&8\\
           $m_C$&72&72\\
@@ -479,6 +476,26 @@
   \end{tikzpicture}
 \end{frame}
 
+\begin{frame}[fragile,fragile]
+  \frametitle{API simplicity}
+\begin{verbatim}
+double *T = malloc(k * n * sizeof(double));
+dgemm("N", "N", k, l, n,
+      1, E, lde, F, ldf,
+      0, T, k);
+dgemm("N", "N", m, k, n,
+      alpha, D, ldd, T, k,
+      beta, G, ldg);
+free(T);
+\end{verbatim}
+  vs.
+\begin{verbatim}
+dgemm3("R", "N", "N", "N", m, k, l, n,
+       alpha, D, ldd, E, lde, F, ldf,
+       beta, G, ldg);
+\end{verbatim}
+\end{frame}
+
 \begin{frame}
   \frametitle{$G \pluseq D(EF)$, square matrices}
   \begin{tikzpicture}
@@ -490,10 +507,42 @@
 \end{frame}
 
 \begin{frame}
+  \frametitle{$G \pluseq (DE)F$}
+  \begin{adjustbox}{max size={!}{0.5\textheight},center}
+  \begin{tikzpicture}
+    \alt<2->{
+    \matrix (pics)[column sep=0.2cm, row sep=3ex, ampersand replacement=\&] {
+      \node{Ex: \textbf{Do:}};\&
+      \node[tall-mat] (D) {$D$};
+      \bracelabel{D.north west}{D.south west}{left}{}
+      \bracelabel{D.south west}{D.south east}{below}{9}\&
+      \node[wide-mat] (E) {\large $E$};
+      \bracelabel{E.north east}{$(3, -3)$}{right}{}\&
+      \node[square-mat] (F) {\large $F$};\\
+    };}{
+    \matrix (pics)[column sep=0.2cm, row sep=3ex, ampersand replacement=\&] {
+      \node{Ex: \textbf{Don't:}};\&
+      \node[tall-mat] (D) {$D$};
+      \bracelabel{D.south west}{D.south east}{below}{9}\&
+      \node[wide-mat] (E) {\large $E$};
+      \bracelabel{E.north west}{$(0, -3)$}{left}{}\&
+      \node[square-mat] (F) {\large $F$};
+      \bracelabel{F.north east}{F.south east}{right}{}\\
+    };}
+  \end{tikzpicture}
+  \end{adjustbox}
+  \begin{itemize}
+  \item Putting parentheses there sometimes better
+  \item Deriving directly doesn't work --- bad shape
+  \item However, $G \pluseq (DE)F \Leftrightarrow G^T \pluseq F^T(E^TD^T)$
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
   \frametitle{$G \pluseq (DE)F$, square matrices}
   \begin{tikzpicture}
     \node[graph-pic] (graph) {\includegraphics[height=0.9\textheight]{../results/earwig2/gemm3_ab_bc_kernel}};
-    \node[explanation, at=(graph.center)] {\small Similar trends, row-major helps BLIS};
+    \node[explanation, at=(graph.center)] {\small Similar trends, row-major helps \gemm{}};
   \end{tikzpicture}
 \end{frame}
 
@@ -510,8 +559,8 @@
   \begin{itemize}
   \item \gemm{} structure lets us make \gemmt{}
   \item Constant memory
-  \item Comprable performance
   \item Cleaner API
+  \item Comparable performance
   \end{itemize}
 \end{frame}
 
@@ -520,6 +569,7 @@
   \begin{itemize}
   \item Parallel case
   \item More architectures
+  \item Variants (matrices with properties), autogeneration
   \end{itemize}
 \end{frame}
 

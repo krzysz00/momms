@@ -54,13 +54,13 @@
 \end{abstract}
 
 \section{Introduction}
-The matrix chain problem asks how to efficiently parenthesize a matrix product $A_1A_2\cdots A_n$.
-$O(n \log n)$ algorithms for solving this problem are known\mycite{Hu1984}, as are simpler $O(n^3)$ dynamic-programming solutions\mycite{Barthels2018}.
+The matrix chain problem asks how to efficiently parenthesize a matrix product $A_1A_2\cdots A_N$.
+$O(N \log N)$ algorithms for solving this problem are known\mycite{Hu1984}, as are simpler $O(N^3)$ dynamic-programming solutions\mycite{Barthels2018}.
 These algorithms all assume that the only operation available is the multiplication of two matrices.
 
 In practice, a more general version of this problem appears, where matrices can be transposed and/or inverted, or have properties such as being upper triangular\mycite{Barthels2018}.
 For example, an algorithm to compute the ensemble Kalman filter\mycite{Rao2017} (which computes parameters for physical systems from noisy data) requires the computation of the expression $X_i^b S_i (Y_i^b)^T R_i^{-1}$, which features one transposition and one inverse.
-Other examples of the generalized matrix chain problem include the expression $L^{-1}AL^{-H}$ (where $L$ is lower triangular and $A$ is symmetric), which is knows as the two-sided triangular solve\mycite{Poulson2011} and $\tau_u\tau_v vv^TAuu^T$ (where the $\tau_i$ are scalars and $v$ and $u$ are vectors), which appears in an algorithm for reducing a matrix to tridiagonal form\mycite{Choi1995}.
+Other examples of the generalized matrix chain problem include the expression $L^{-1}AL^{-H}$ (where $L$ is lower triangular and $A$ is symmetric), which is known as the two-sided triangular solve\mycite{Poulson2011} and $\tau_u\tau_v vv^TAuu^T$ (where the $\tau_i$ are scalars and $v$ and $u$ are vectors), which appears in an algorithm for reducing a matrix to tridiagonal form\mycite{Choi1995}.
 
 The BLAS\mycite{blas_standard} and LAPACK\mycite{lapack_ug} libraries provide many high-performance functions that can assist in the computation of such matrix chains, such as specialized functions for the multiplication of triangular matrices (\textsc{trmm}).
 However, manually determining how to use these functions and coding in term of them requires expert knowledge.
@@ -185,11 +185,11 @@ for some integer $C_A$, and that the same relationship holds for $n_R$ and $B$.
 Given the three sources of data in the $L1$ cache, it must be the case that $C_A + C_B + 1 \leq W_{L1}$ (the $1$ is for elements of $C'$), and that we want to maximize $C_B$ given this constraint.
 Therefore, we have
 \begin{equation*}
-  C_B = \ceil*{\frac{n_Rk_CS_{elem}}{N_{L1}C_{L1}}} = \ceil*{\frac{n_R}{m_R}C_A}
+  C_B = \ceil*{\frac{n_Rk_CS_{elem}}{N_{L1}C_{L1}}} = \ceil*{\frac{n_R}{m_R}C_A}.
 \end{equation*}
 Manipulating the inequality further shows us that
 \begin{equation*}
-  C_A \leq \floor*{\frac{W_{L1} - 1}{1 + \frac{n_R}{m_R}}}
+  C_A \leq \floor*{\frac{W_{L1} - 1}{1 + \frac{n_R}{m_R}}}.
 \end{equation*}
 
 Choosing the largest possible value of $C_A$ that leaves $k_C$ an integer will maximize $k_C$, improving performance by increasing the amount of time spent in the microkernel.
@@ -242,7 +242,7 @@ The first step of the \gemm{} algorithm reduces $C \pluseq AB$ (or, in our case,
   = A
   \left[\begin{array}{c|c|c|c|c|c}
     B_{,1}&B_{,2}&\cdots&B_{,j}&\cdots&B_{n \mod n_C}
-  \end{array}\right]
+  \end{array}\right].
 \end{equation*}
 If we substitute in the values we're computing with, we have:
 \begin{equation*}
@@ -254,7 +254,7 @@ If we substitute in the values we're computing with, we have:
     \left[\begin{array}{c|c|c|c|c|c}
       F_{,1}&F_{,2}&\cdots&F_{,j}&\cdots&F_{n \mod n_C}
     \end{array}\right]
-  \right)
+  \right).
 \end{equation*}
 
 Now, for the $j$th subploblem, the matrices will be partitioned in the $k$ dimension as follows:
@@ -270,7 +270,7 @@ Now, for the $j$th subploblem, the matrices will be partitioned in the $k$ dimen
     B_{p,j}\\\hline
     \vdots\\\hline
     B_{k \mod k_C,j}
-  \end{array}\right]
+  \end{array}\right].
 \end{equation*}
 For the \gemmt{} computation, we have
 \begin{equation*}
@@ -288,7 +288,7 @@ For the \gemmt{} computation, we have
           E_{k \mod k_C,}
   \end{array}\right]
   F_{,j}
-  \right)
+  \right).
 \end{equation*}
 
 At this point in the algorithm, the subregion $B_{p, j}$ is a row panel of $B$ with a fixed size that will be packed into $\widetilde{B}$, which resides in $L3$ cache.
@@ -319,7 +319,7 @@ The inner algorithm must place its output in $L3$ cache to prevent unnecessary m
 This change to $n_C$ does not  break the assumptions of the BLIS algorithm, as $n_C/2$ is still much larger than $k_C$ or $m_C$ in practice.
 
 The other parameter adjustment that needs to be performed is to reduce $k_C$ so that it is divisible by $m_R$ if that is not already the case.
-If this is not done, the BLIS macrokernel's loops will a final iteration that considers fewer than $m_R$ rows during each invocation of the inner algorithm since $k_C$ becomes the $m$ dimension for the inner problem.
+If this is not done, the BLIS macrokernel's loops will have a final iteration that considers fewer than $m_R$ rows during each invocation of the inner algorithm since $k_C$ becomes the $m$ dimension for the inner problem.
 Computation of this fringe iteration has a performance impact, as special processing is required to account for the unusual sizes, especially since the loop that this cost would normally be amortized over only runs for a few iterations in the inner algorithm.
 This gains from eliminating this source of low performance outweigh the losses from having a slightly suboptimal $k_C$ value.
 However, $l_C$, which is the inner algorithm's version of $k_C$, can be kept at the BLIS value, as these performance considerations do not arise in this stark fashion there.
@@ -331,7 +331,7 @@ The algorithm that results from this derivation is Algorithm \ref{alg:gemm3}, wh
 
 \begin{figure}
   \centering
-  \includegraphics[height=8.75in]{gemm3-picture}
+  \includegraphics[height=8.7in]{gemm3-picture}
   \caption{Illustration of algorithm for \gemmt{}. Constants that appear twice indicate the dimension along which each loop proceeds, along with the stride.}
   \label{fig:gemm3}
 \end{figure}
@@ -392,7 +392,7 @@ The blocking parameters that arose from this data can be found in Table \ref{tab
     $l_C$&256&\\
     $n_C$&2040&4080\\
   \end{tabular}
-  \caption{Blocking parameters for Haswell}
+  \caption{Blocking parameters for the Haswell microarchitecture}
   \label{tab:parameters}
 \end{table}
 

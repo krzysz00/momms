@@ -60,7 +60,7 @@ type L3CInner<T, MTA, MTB, MTC> =
 type L3CInnerSub<T> = Subcomputation<T, Matrix<T>, Matrix<T>, ColPM<T>>;
 pub type Dgemm3Sub = L3CInnerSub<f64>;
 pub type Dgemm3TmpWidth = L3CNc;
-pub type Dgemm3TmpHeight = L3CNc;
+pub type Dgemm3TmpHeight = L3CMc;
 type L3BOuter<T, MTA, MTAi, MTBi, MTC> =
       SpawnThreads<T, MTA, Subcomputation<T, MTAi, MTBi, ColPM<T>>, MTC,
       PartN<T, MTA, Subcomputation<T, MTAi, MTBi, ColPM<T>>, MTC, L3CNc,

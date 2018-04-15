@@ -19,16 +19,16 @@ fn test_gemm3() {
     let mut chained = Dgemm3::new();
     let mut goto = GotoDgemm3::new();
 
-    let flusher_len = 2*1024*1024; //16MB
+    let flusher_len = 4*1024*1024; //32MB
     let mut flusher: Vec<f64> = Vec::with_capacity(flusher_len);
     for _ in 0..flusher_len {
         flusher.push(0.0);
     }
 
-    const SMALL_DIM: usize = 9;
+    const SMALL_DIM: usize = 252;
     for to_lower in 1..5 {
         println!("### Coordinate {} = {} runs", to_lower, SMALL_DIM);
-        for index in 2..308 {//512 {
+        for index in 1..308 {//512 {
             let mut best_time: f64 = 9999999999.0;
             let mut best_time_stock: f64 = 9999999999.0;
             let mut worst_err: f64 = 0.0;
@@ -40,6 +40,10 @@ fn test_gemm3() {
                 4 => (size, size, size, SMALL_DIM),
                 _ => unreachable!()
             };
+
+            if size == 252 {
+                continue;
+            }
 
             let n_reps = 5;
             for _ in 0..n_reps {
@@ -76,8 +80,8 @@ fn test_gemm3() {
             }
             println!("{}\t{}\t{}\t{}\t{}\t{}\t{:e}",
                      m, n, k, l,
-                     util::gflops_bc(m,n,k,l,best_time),
-                     util::gflops_bc(m,n,k,l,best_time_stock),
+                     util::gflops3(m,n,k,l,best_time),
+                     util::gflops3(m,n,k,l,best_time_stock),
                      worst_err.sqrt());
         }
     }

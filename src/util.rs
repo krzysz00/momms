@@ -3,6 +3,7 @@ extern crate libc;
 extern crate alloc;
 
 use std::time::Instant;
+use std::cmp;
 #[allow(unused_imports)]
 use libc::{c_double, int64_t, c_char};
 
@@ -177,6 +178,11 @@ pub fn gflops_ab(m: usize, n: usize, k: usize, l: usize, seconds: f64) -> f64 {
 
 pub fn gflops_bc(m: usize, n: usize, k: usize, l: usize, seconds: f64) -> f64 {
     let nflops = (k * l * n + m * k * n) as f64;
+    2.0 * nflops / seconds / 1E9
+}
+
+pub fn gflops3(m: usize, n: usize, k: usize, l: usize, seconds: f64) -> f64 {
+    let nflops = cmp::min(m * k * l + m * l * n, k * l * n + m * k * n) as f64;
     2.0 * nflops / seconds / 1E9
 }
 

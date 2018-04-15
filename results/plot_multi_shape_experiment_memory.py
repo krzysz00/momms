@@ -17,7 +17,8 @@ narrow_exper = pd.read_csv(argv[1], sep='\t', comment='#',
                            float_precision="high", header=None,
                            names=["m", "n", "k", "l", "flopsa", "flopsb", "error"])
 
-narrow_exper["Narrowed Dim."] = narrow_exper[["m", "n", "k", "l"]].idxmin(axis=1)
+NARROW_DIM = 252
+narrow_exper["Narrowed Dim."] = (narrow_exper[["m", "n", "k", "l"]] == NARROW_DIM).idxmax(axis=1)
 narrow_exper["N"] = narrow_exper.apply(lambda row: row["k"]
                                        if row["Narrowed Dim."] == "m"
                                        else row["m"], axis=1)

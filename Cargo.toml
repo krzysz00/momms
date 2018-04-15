@@ -52,6 +52,10 @@ name = "exper_framework_overhead"
 path = "src/exper/framework_overhead.rs"
 
 [[bin]]
+name = "exper_gemm3_kc_impact"
+path = "src/exper/gemm3_kc_impact.rs"
+
+[[bin]]
 name = "exper_l3"
 path = "src/exper/l3.rs"
 

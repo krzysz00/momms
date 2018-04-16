@@ -29,10 +29,10 @@ only-plots: $(wildcard results/plot_*.py)
 	./results/plot_experiment.py $(DATADIR)/gemm3.dat "gemm3()" "\$$G\$$ += \$$D(EF)\$$, square matrices" "N" $(DATADIR)/gemm3.$(PLOTEXT)
 	./results/plot_experiment.py $(DATADIR)/gemm3_ab_bc_kernel.dat "gemm3()" "\$$G^T\$$ += \$$F^T(E^TD^T)\$$, square matrices" "N" $(DATADIR)/gemm3_ab_bc_kernel.$(PLOTEXT)
 	./results/plot_experiment.py $(DATADIR)/gemm3_parallel.dat "gemm3()" "\$$G\$$ += \$$D(EF)\$$, square matrices, 4 cores" "N" $(DATADIR)/gemm3_parallel.$(PLOTEXT)
-	./results/plot_multi_shape_experiment.py $(DATADIR)/gemm3_rectangles.dat "gemm3()" "\$$G\$$ += \$$D(EF)\$$, narrow dimension = 9" $(DATADIR)/gemm3_rectangles.$(PLOTEXT)
+	./results/plot_multi_shape_experiment.py $(DATADIR)/gemm3_rectangles.dat "gemm3()" "\$$G\$$ += \$$D(EF)\$$, narrow dimension = 252" $(DATADIR)/gemm3_rectangles.$(PLOTEXT)
 
 	./results/plot_experiment_memory.py $(DATADIR)/gemm3.dat "gemm3()" "Memory usage of gemm3() vs. BLIS algorithm, square matrices" "N" $(DATADIR)/gemm3_memory.$(PLOTEXT)
-	./results/plot_multi_shape_experiment_memory.py $(DATADIR)/gemm3_rectangles.dat "gemm3()" "Memeroy usage of right paranthesized kernel vs. BLIS algo., narrow dimension = 9" $(DATADIR)/gemm3_rectangles_memory.$(PLOTEXT)
+	./results/plot_multi_shape_experiment_memory.py $(DATADIR)/gemm3_rectangles.dat "gemm3()" "Memeroy usage of right paranthesized kernel vs. BLIS algo., narrow dimension = 252" $(DATADIR)/gemm3_rectangles_memory.$(PLOTEXT)
 
 	./results/plot_percent_change.py $(DATADIR)/gemm3_changes.dat "\$$G\$$ += \$$D(EF)\$$, square matrices" "N" $(DATADIR)/gemm3_changes.$(PLOTEXT)
 	./results/plot_percent_change.py $(DATADIR)/gemm3_ab_bc_kernel_changes.dat "\$$G^T\$$ += \$$F^T(E^TD^T)\$$, square matrices" "N" $(DATADIR)/gemm3_ab_bc_kernel_changes.$(PLOTEXT)

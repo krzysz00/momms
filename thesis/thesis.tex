@@ -244,7 +244,7 @@ The first step of the \gemm{} algorithm reduces $C \pluseq AB$ (or, in our case,
     B_{,1}&B_{,2}&\cdots&B_{,j}&\cdots&B_{n \mod n_C}
   \end{array}\right].
 \end{equation*}
-If we substitute in the values we're computing with, we have:
+If we substitute in the values we are computing with, we have:
 \begin{equation*}
   \left[\begin{array}{c|c|c|c|c|c}
     G_{,1}&G_{,2}&\cdots&G_{,j}&\cdots& G_{n \mod n_C}
@@ -397,7 +397,8 @@ The blocking parameters that arose from this data can be found in Table \ref{tab
 \end{table}
 
 \subsection{Experiments performed}
-Our experiments were run both on square matrices ($m = n = k = l = N$, where $D$ is $m \times k$, $E$ is $k \times l$, $F$ is $l \times n$, and $G$ is $m \times n$) and on problems where a particular dimension was fixed at $9$ while the others varied together, to evaluate the performance of these algorithms on multiple input shapes.
+Our experiments were run both on square matrices ($m = n = k = l = N$, where $D$ is $m \times k$, $E$ is $k \times l$, $F$ is $l \times n$, and $G$ is $m \times n$) and on problems where a particular dimension was fixed at $252$ while the others varied together, to evaluate the performance of these algorithms on multiple input shapes.
+The parameter $252$ was chosen for the rectangular case because it was $k_C$ for the \gemmt{} algorithm and slightly below $l_C$ and the $k_C$ value for BLIS.
 We sampled the performance at multiples of sixteen from $N = 16$ to $4912$ to test the suitability of our approach on many input sizes.
 All the inputs were stored in column-major form, while the temporaries and outputs were stored in row-major form, since the BLIS microkernel has noticably increased performance when writing to row-major matrices (and since the packed buffer is row-major).
 This unusual combination of input formats ensured a fair comparison between the two algorithms.
@@ -408,7 +409,6 @@ A plot of the computed additional memory consumption (excluding inputs and outpu
 The results of these experiments can be found in Figure \ref{fig:bc_square} for square matrices, and Figure \ref{fig:bc_rectangles} for the rectangular inputs.
 The $G \pluseq (DE)F$ experiment's results are in Figure \ref{fig:ab_square}.
 Data for the square case shows that, once performance has stabilized around $N = 512$, the two algorithms are almost always within 5\% of each other in GFlops/s, showing comparable performance.
-In addition, a plot of the computed additional memory consumption (excluding inputs and outputs) for multiplying square matrices using both algorithm is shown in Figure \ref{fig:bc_square_mem}, demonstrating our approach's much lower memory usage.
 
 \begin{figure}
   \centering
@@ -426,7 +426,7 @@ In addition, a plot of the computed additional memory consumption (excluding inp
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.95\textwidth]{../results/earwig2/gemm3_rectangles}
+  \includegraphics[width=0.95\textwidth]{../results/earwig-correct-rectangle-flops/gemm3_rectangles}
   \caption{Performance of our \gemmt{} implementation compared to a pair of \gemm{} calls, rectangular matrices}
   \label{fig:bc_rectangles}
 \end{figure}
@@ -456,13 +456,12 @@ However, the pair of \gemm{} calls retains higher performance for a longer perio
 This occurs because packing from row-major matrices to row-major packed buffers, which is something that occurs more frequently in this experiment, is much more amenable to the CPU's prefetcher than packing from column-major matrices.
 
 The rectangular-matrix results from Figure \ref{fig:bc_rectangles} also require examination.
-When $l$ is small, the \gemmt{} algorithm performs better on all inputs, as the memory-writing overhead in the BLIS algorithm remains, while the advantage of reuse in computing $EF$ is reduced (because the $k$ dimension is very narrow, creating a memory-intensive outer product).
-When $m$ is small, the costs of low $L3$ reuse are imposed at least once on both algorithms, decreasing the performance of both.
+When $k$ is at or around $k_C$, the \gemmt{} algorithm performs better on all inputs, as the low $\widetilde{F}$ reuse issues that normally impact the performance of our algorithm now also affect the performance of the \gemm{} calls while our performance advantages from lower memory usages remain.
+When the $n$ dimension is narrow, the outer problem in the \gemmt{} algorithm eventually becomes a column-panel times block multiply, which creates an extremely slight performance drop (never more than 2\%) against the pair of matrix-column panel multiplies from the \gemm{} calls.
 
-When $n$ is narrow, the problem is effectively converted to a series of several matrix-vector multiplications, which cannot achieve high performance with either algorithm.
-For narrow $k$, the outer problem is an outer product, while the inner problem is a panel-matrix multiply (wide matrix times square matrix).
-These shapes do not generally promote data reuse within the BLIS algorithm.
-The eventually increased performance of \gemmt{} with $k = 9$ is due to the lowered number of memory operations that algorithm performs, since memory operations dominate this computation.
+When the $m$ dimension is narrow, we see the effects of suboptimal parenthesization, as both algorithms must perform a matrix-matrix multiply followed by a vector-matrix multiply once the dimensions other than $n$ are large enough.
+The performance of both algorithms is equal because both are primarily affected by the memory-bound nature of the computation.
+Similarly, if $l$ is narrow, the computations are approximately outer product followed by a matrix-matrix multiply, which could be performed much more efficiently by moving the parentheses, as shown by the narrow $k$ case.
 
 These results demonstrate the general suitability of our algorithm for \gemmt{} and its suitability as a high-performance primitive.
 
